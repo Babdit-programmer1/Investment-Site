@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Users, Briefcase, DollarSign, Activity, CheckCircle, XCircle, Plus, Edit } from 'lucide-react';
+import { Users, Briefcase, DollarSign, Activity, CheckCircle, XCircle, Plus, Edit, Shield } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 
 const API_URL = 'http://localhost:3001/api/v1/admin';
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'assets' | 'investors'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'assets' | 'investors' | 'approvals'>('overview');
   const [stats, setStats] = useState<any>(null);
   const [investors, setInvestors] = useState<any[]>([]);
+  const [approvals, setApprovals] = useState<any[]>([]);
   const [token] = useState(localStorage.getItem('prestige_token'));
 
   // Redirect if not admin
@@ -19,7 +20,8 @@ const AdminDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchStats();
-    fetchInvestors();
+    if (activeTab === 'investors') fetchInvestors();
+    if (activeTab === 'approvals') fetchApprovals();
   }, [activeTab]);
 
   const fetchStats = async () => {
@@ -38,12 +40,31 @@ const AdminDashboard: React.FC = () => {
     } catch (e) { console.error(e); }
   };
 
+  const fetchApprovals = async () => {
+    try {
+      const res = await fetch(`${API_URL}/approvals`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      setApprovals(data);
+    } catch (e) { console.error(e); }
+  };
+
   const verifyUser = async (id: string) => {
     await fetch(`${API_URL}/investors/${id}/verify`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${token}` }
     });
     fetchInvestors();
+  };
+
+  const handleApproval = async (id: string, action: 'approve' | 'refund') => {
+    try {
+      await fetch(`${API_URL}/approvals/${id}/${action}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchApprovals();
+      fetchStats();
+    } catch (e) { console.error(e); }
   };
 
   return (
@@ -53,16 +74,21 @@ const AdminDashboard: React.FC = () => {
         <p className="text-slate-400 mb-8">System Overview & Management</p>
 
         {/* Tabs */}
-        <div className="flex space-x-4 mb-8 border-b border-white/10">
-          {['overview', 'assets', 'investors'].map(tab => (
+        <div className="flex space-x-4 mb-8 border-b border-white/10 overflow-x-auto">
+          {['overview', 'assets', 'investors', 'approvals'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
-              className={`pb-3 text-sm font-medium capitalize transition-colors ${
+              className={`pb-3 text-sm font-medium capitalize transition-colors whitespace-nowrap ${
                 activeTab === tab ? 'text-gold-500 border-b-2 border-gold-500' : 'text-slate-400 hover:text-white'
               }`}
             >
-              {tab}
+              {tab === 'approvals' && stats?.activeInvestments > 0 ? (
+                <span className="flex items-center gap-2">
+                  Approvals 
+                  <span className="bg-amber-500 text-navy-900 px-1.5 py-0.5 rounded-full text-xs font-bold">{stats.activeInvestments}</span>
+                </span>
+              ) : tab}
             </button>
           ))}
         </div>
@@ -73,7 +99,7 @@ const AdminDashboard: React.FC = () => {
               { label: 'Total Users', val: stats.totalUsers, icon: <Users /> },
               { label: 'Total Assets', val: stats.totalAssets, icon: <Briefcase /> },
               { label: 'Est. AUM', val: `$${stats.totalAum.toLocaleString()}`, icon: <DollarSign /> },
-              { label: 'Active Deals', val: stats.activeInvestments, icon: <Activity /> }
+              { label: 'Pending Approvals', val: stats.activeInvestments, icon: <Activity /> }
             ].map((s, i) => (
               <div key={i} className="bg-navy-800 p-6 rounded border border-white/5">
                 <div className="flex justify-between items-start mb-2">
@@ -121,6 +147,51 @@ const AdminDashboard: React.FC = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {activeTab === 'approvals' && (
+          <div className="bg-navy-800 rounded border border-white/5 overflow-hidden">
+            {approvals.length === 0 ? (
+               <div className="p-12 text-center text-slate-400">No pending investments found.</div>
+            ) : (
+              <table className="min-w-full divide-y divide-white/10">
+                <thead className="bg-navy-950">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Investor</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Asset</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Amount</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {approvals.map((item) => (
+                    <tr key={item.id}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-white">{item.user?.fullName}</div>
+                        <div className="text-xs text-slate-500">{item.user?.email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{item.asset?.title}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-white">${item.amount.toLocaleString()}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="bg-amber-500/10 text-amber-500 px-2 py-1 rounded-full text-xs font-bold flex items-center w-fit gap-1">
+                          <Shield size={10} /> Escrowed
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-3">
+                        <button onClick={() => handleApproval(item.id, 'approve')} className="text-emerald-400 hover:text-emerald-300 flex items-center gap-1">
+                          <CheckCircle size={16} /> Release Funds
+                        </button>
+                        <button onClick={() => handleApproval(item.id, 'refund')} className="text-rose-400 hover:text-rose-300 flex items-center gap-1">
+                          <XCircle size={16} /> Refund
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
 

@@ -1,34 +1,84 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Link, Navigate } from 'react-router-dom';
-import { PieChart, TrendingUp, DollarSign, Activity, Briefcase, Download, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
+import { PieChart, TrendingUp, DollarSign, Activity, Briefcase, Download, ShieldCheck, AlertCircle, Clock, CheckCircle } from 'lucide-react';
+import { InvestmentIntent } from '../types';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const [investments, setInvestments] = useState<InvestmentIntent[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Redirect to onboarding if not complete
   if (user && !user.onboardingCompleted) {
     return <Navigate to="/onboarding" replace />;
   }
 
-  const stats = useMemo(() => {
-    if (user?.investorType === 'High Net Worth' || user?.investorType === 'Institutional') {
-      return [
-        { label: "Total Portfolio Value", value: "$2,450,000", icon: <DollarSign />, change: "+12.4%", changeType: "pos" },
-        { label: "Active Investments", value: "8", icon: <Briefcase />, change: "2 Pending", changeType: "neutral" },
-        { label: "Est. Annual Yield", value: "14.2%", icon: <TrendingUp />, change: "+1.5%", changeType: "pos" },
-        { label: "Available Cash", value: "$150,000", icon: <Activity />, change: "Deposit", changeType: "action" }
-      ];
+  useEffect(() => {
+    // Check for payment verification param from gateway redirect
+    const reference = searchParams.get('reference');
+    if (reference) {
+      verifyPayment(reference);
+    } else {
+      fetchInvestments();
     }
+  }, [searchParams]);
+
+  const verifyPayment = async (ref: string) => {
+    try {
+      const token = localStorage.getItem('prestige_token');
+      await fetch('http://localhost:3001/api/v1/payments/verify', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ reference: ref })
+      });
+      fetchInvestments();
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (e) { console.error(e); }
+  };
+
+  const fetchInvestments = async () => {
+    try {
+      const token = localStorage.getItem('prestige_token');
+      const res = await fetch('http://localhost:3001/api/v1/payments/my', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setInvestments(data);
+      setLoading(false);
+    } catch (e) { console.error(e); }
+  };
+
+  const stats = useMemo(() => {
+    const totalInvested = investments
+      .filter(i => i.status === 'ACTIVE' || i.status === 'ESCROWED')
+      .reduce((acc, curr) => acc + curr.amount, 0);
+    
+    const activeCount = investments.filter(i => i.status === 'ACTIVE').length;
+    const pendingCount = investments.filter(i => i.status === 'ESCROWED').length;
+
     return [
-      { label: "Total Portfolio Value", value: "$0.00", icon: <DollarSign />, change: "+0.0%", changeType: "neutral" },
-      { label: "Active Investments", value: "0", icon: <Briefcase />, change: "0", changeType: "neutral" },
-      { label: "Est. Annual Yield", value: "0.0%", icon: <TrendingUp />, change: "+0.0%", changeType: "neutral" },
+      { label: "Total Portfolio Value", value: `$${totalInvested.toLocaleString()}`, icon: <DollarSign />, change: activeCount > 0 ? "+12.4%" : "0.0%", changeType: activeCount > 0 ? "pos" : "neutral" },
+      { label: "Active Investments", value: activeCount.toString(), icon: <Briefcase />, change: `${pendingCount} Pending`, changeType: "neutral" },
+      { label: "Est. Annual Yield", value: activeCount > 0 ? "14.2%" : "0.0%", icon: <TrendingUp />, change: "+1.5%", changeType: activeCount > 0 ? "pos" : "neutral" },
       { label: "Available Cash", value: "$0.00", icon: <Activity />, change: "Deposit", changeType: "action" }
     ];
-  }, [user]);
+  }, [investments]);
 
-  const hasActivePortfolio = user?.investorType === 'High Net Worth' || user?.investorType === 'Institutional';
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'ACTIVE': return <span className="bg-emerald-500/10 text-emerald-500 px-2 py-1 rounded text-xs font-bold flex items-center gap-1"><CheckCircle size={12}/> ACTIVE</span>;
+      case 'ESCROWED': return <span className="bg-amber-500/10 text-amber-500 px-2 py-1 rounded text-xs font-bold flex items-center gap-1"><ShieldCheck size={12}/> ESCROW</span>;
+      case 'PENDING': return <span className="bg-slate-700 text-slate-400 px-2 py-1 rounded text-xs font-bold flex items-center gap-1"><Clock size={12}/> UNPAID</span>;
+      case 'REFUNDED': return <span className="bg-rose-500/10 text-rose-500 px-2 py-1 rounded text-xs font-bold">REFUNDED</span>;
+      default: return null;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-navy-900 pt-20">
@@ -92,34 +142,43 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 bg-navy-800 rounded-sm border border-white/5 p-6 min-h-[400px]">
              <div className="flex justify-between items-center mb-6">
-               <h3 className="text-lg font-serif text-white">Portfolio Performance</h3>
-               <div className="flex gap-2">
-                 {['1M', '3M', '6M', '1Y', 'ALL'].map(t => (
-                   <button key={t} className={`text-xs font-mono px-3 py-1 rounded transition-colors ${t === '1Y' ? 'bg-white/10 text-white' : 'bg-navy-900 text-slate-400 hover:text-white hover:bg-white/5'}`}>
-                     {t}
-                   </button>
-                 ))}
-               </div>
+               <h3 className="text-lg font-serif text-white">Your Investments</h3>
              </div>
              
-             {hasActivePortfolio ? (
-               <div className="h-64 w-full flex items-end justify-between space-x-1 px-2 relative">
-                  <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20">
-                     <div className="border-t border-slate-500 w-full h-0"></div>
-                     <div className="border-t border-slate-500 w-full h-0"></div>
-                     <div className="border-t border-slate-500 w-full h-0"></div>
-                     <div className="border-t border-slate-500 w-full h-0"></div>
-                  </div>
-                  {[35, 38, 36, 42, 45, 43, 50, 55, 53, 58, 62, 65, 60, 68, 72, 75, 78, 82, 80, 85, 90, 88, 92, 95].map((h, i) => (
-                    <div key={i} className="w-full bg-gradient-to-t from-gold-600/50 to-gold-400 rounded-t-sm hover:from-gold-500 hover:to-white transition-all duration-300" style={{ height: `${h}%` }}></div>
-                  ))}
+             {investments.length > 0 ? (
+               <div className="overflow-hidden">
+                 <table className="min-w-full divide-y divide-white/10">
+                   <thead className="bg-navy-900">
+                     <tr>
+                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Asset</th>
+                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Amount</th>
+                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Date</th>
+                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Status</th>
+                     </tr>
+                   </thead>
+                   <tbody className="divide-y divide-white/5">
+                     {investments.map((inv) => (
+                       <tr key={inv.id}>
+                         <td className="px-6 py-4 whitespace-nowrap">
+                           <div className="text-sm text-white font-medium">{inv.asset?.title}</div>
+                           <div className="text-xs text-slate-500">{inv.asset?.ticker}</div>
+                         </td>
+                         <td className="px-6 py-4 whitespace-nowrap text-sm text-white">${inv.amount.toLocaleString()}</td>
+                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">{new Date(inv.createdAt).toLocaleDateString()}</td>
+                         <td className="px-6 py-4 whitespace-nowrap">
+                           {getStatusBadge(inv.status)}
+                         </td>
+                       </tr>
+                     ))}
+                   </tbody>
+                 </table>
                </div>
              ) : (
                <div className="h-64 flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded">
                  <div className="p-4 bg-navy-900 rounded-full mb-4">
                    <TrendingUp className="h-8 w-8 text-slate-600" />
                  </div>
-                 <p className="text-slate-300 font-medium">No active performance data</p>
+                 <p className="text-slate-300 font-medium">No active investments</p>
                  <Link to="/investments" className="mt-4 text-gold-500 text-sm font-medium hover:underline">Browse Marketplace</Link>
                </div>
              )}

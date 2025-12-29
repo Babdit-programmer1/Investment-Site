@@ -1,15 +1,14 @@
 import { Request, Response } from 'express';
+// @ts-ignore
 import { PrismaClient } from '@prisma/client';
-import { AuthRequest } from '../middleware/authMiddleware';
 
 const prisma = new PrismaClient();
 
-export const submitOnboarding = async (req: Request, res: Response) => {
-  const userId = (req as AuthRequest).user.id;
-  const { stepData } = (req as any).body; // Expect aggregated data or handle steps
+export const submitOnboarding = async (req: any, res: any) => {
+  const userId = req.user?.id;
+  const { stepData } = req.body; 
 
   try {
-    // Merge existing profile data with new step data
     const user = await prisma.user.findUnique({ where: { id: userId } });
     const currentProfile = (user?.profileData as object) || {};
     
@@ -19,24 +18,24 @@ export const submitOnboarding = async (req: Request, res: Response) => {
         profileData: { ...currentProfile, ...stepData }
       }
     });
-    (res as any).json(updatedUser);
+    res.json(updatedUser);
   } catch (error) {
-    (res as any).status(500).json({ message: 'Error saving onboarding data' });
+    res.status(500).json({ message: 'Error saving onboarding data' });
   }
 };
 
-export const completeOnboarding = async (req: Request, res: Response) => {
-  const userId = (req as AuthRequest).user.id;
+export const completeOnboarding = async (req: any, res: any) => {
+  const userId = req.user?.id;
   try {
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
         onboardingCompleted: true,
-        kycStatus: 'PENDING' // Set to pending for admin review
+        kycStatus: 'PENDING'
       }
     });
-    (res as any).json(updatedUser);
+    res.json(updatedUser);
   } catch (error) {
-    (res as any).status(500).json({ message: 'Error completing onboarding' });
+    res.status(500).json({ message: 'Error completing onboarding' });
   }
 };

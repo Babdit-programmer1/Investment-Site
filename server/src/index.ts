@@ -6,6 +6,7 @@ import authRoutes from './routes/authRoutes';
 import investmentRoutes from './routes/investmentRoutes';
 import adminRoutes from './routes/adminRoutes';
 import onboardingRoutes from './routes/onboardingRoutes';
+import paymentRoutes from './routes/paymentRoutes';
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/investments', investmentRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/onboarding', onboardingRoutes);
+app.use('/api/v1/payments', paymentRoutes);
 
 // Health Check
 app.get('/health', (req, res) => {

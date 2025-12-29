@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Investment } from '../types';
 import { TrendingUp, Info, ChevronRight, Filter, Loader2 } from 'lucide-react';
+import InvestModal from '../components/InvestModal';
+import { useAuth } from '../context/AuthContext';
 
 const API_URL = 'http://localhost:3001/api/v1/investments';
 
@@ -9,10 +11,13 @@ const API_URL = 'http://localhost:3001/api/v1/investments';
 const GrowthChart: React.FC<{ scenarios: { conservative: number, moderate: number, aggressive: number } }> = ({ scenarios }) => {
   const width = 100;
   const height = 40;
+  // Parse if string (handling potential JSON string from backend)
+  const safeScenarios = typeof scenarios === 'string' ? JSON.parse(scenarios) : scenarios;
+  
   const getY = (val: number) => Math.max(0, Math.min(40, 40 - (val + 10)));
-  const cY = getY(scenarios.conservative);
-  const mY = getY(scenarios.moderate);
-  const aY = getY(scenarios.aggressive);
+  const cY = getY(safeScenarios?.conservative || 0);
+  const mY = getY(safeScenarios?.moderate || 0);
+  const aY = getY(safeScenarios?.aggressive || 0);
 
   return (
     <svg width="100%" height="40" viewBox="0 0 100 40" preserveAspectRatio="none" className="overflow-visible">
@@ -29,7 +34,10 @@ const Investments: React.FC = () => {
   const [riskFilter, setRiskFilter] = useState('All');
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
   
+  const { user } = useAuth();
+
   useEffect(() => {
     fetch(API_URL)
       .then(res => res.json())
@@ -48,6 +56,14 @@ const Investments: React.FC = () => {
     const riskMatch = riskFilter === 'All' || item.riskLevel === riskFilter;
     return categoryMatch && riskMatch;
   });
+
+  const handleInvestClick = (inv: Investment) => {
+    if (!user) {
+      window.location.href = '#/login';
+      return;
+    }
+    setSelectedInvestment(inv);
+  };
 
   if (loading) return (
     <div className="min-h-screen bg-navy-900 flex items-center justify-center">
@@ -128,13 +144,17 @@ const Investments: React.FC = () => {
 
                 <div className="flex items-center justify-between mt-auto">
                    <button className="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition-colors"><Info size={14} /><span>Fact Sheet</span></button>
-                   <Link to="/contact" className="bg-gold-600 hover:bg-gold-500 text-white text-xs font-bold uppercase tracking-wide py-2 px-6 rounded-sm transition-colors flex items-center">Invest Now <ChevronRight size={14} className="ml-1" /></Link>
+                   <button onClick={() => handleInvestClick(inv)} className="bg-gold-600 hover:bg-gold-500 text-white text-xs font-bold uppercase tracking-wide py-2 px-6 rounded-sm transition-colors flex items-center">Invest Now <ChevronRight size={14} className="ml-1" /></button>
                 </div>
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      {selectedInvestment && (
+        <InvestModal investment={selectedInvestment} onClose={() => setSelectedInvestment(null)} />
+      )}
     </div>
   );
 };

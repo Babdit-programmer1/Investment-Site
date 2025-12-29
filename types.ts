@@ -1,6 +1,7 @@
 export type Role = 'USER' | 'ADMIN';
 export type KycStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type InvestmentStatus = 'ACTIVE' | 'CLOSED' | 'UPCOMING';
+export type PaymentStatus = 'PENDING' | 'ESCROWED' | 'ACTIVE' | 'REFUNDED' | 'REJECTED';
 
 export enum ChatRole {
   USER = 'user',
@@ -40,6 +41,20 @@ export interface UserProfile {
   onboardingCompleted: boolean;
   kycStatus: KycStatus;
   joinedDate: string;
+}
+
+export interface InvestmentIntent {
+  id: string;
+  userId: string;
+  assetId: string;
+  amount: number;
+  currency: string;
+  status: PaymentStatus;
+  paymentReference?: string;
+  gateway?: string;
+  createdAt: string;
+  asset?: Investment;
+  user?: UserProfile;
 }
 
 export interface ChatMessage {

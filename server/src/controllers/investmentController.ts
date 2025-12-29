@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
+// @ts-ignore
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export const getAllInvestments = async (req: Request, res: Response) => {
+export const getAllInvestments = async (req: any, res: any) => {
   try {
-    // Auto-seed if empty (Demo convenience)
     const count = await prisma.investment.count();
     if (count === 0) {
       await seedInvestments();
@@ -14,22 +14,23 @@ export const getAllInvestments = async (req: Request, res: Response) => {
     const investments = await prisma.investment.findMany({
       orderBy: { createdAt: 'desc' }
     });
-    (res as any).json(investments);
+    res.json(investments);
   } catch (error) {
     console.error(error);
-    (res as any).status(500).json({ message: 'Error fetching investments' });
+    res.status(500).json({ message: 'Error fetching investments' });
   }
 };
 
-export const getInvestmentById = async (req: Request, res: Response) => {
+export const getInvestmentById = async (req: any, res: any) => {
   try {
+    const { id } = req.params;
     const investment = await prisma.investment.findUnique({
-      where: { id: (req as any).params.id }
+      where: { id }
     });
-    if (!investment) return (res as any).status(404).json({ message: 'Not found' });
-    (res as any).json(investment);
+    if (!investment) return res.status(404).json({ message: 'Not found' });
+    res.json(investment);
   } catch (error) {
-    (res as any).status(500).json({ message: 'Error fetching investment' });
+    res.status(500).json({ message: 'Error fetching investment' });
   }
 };
 
