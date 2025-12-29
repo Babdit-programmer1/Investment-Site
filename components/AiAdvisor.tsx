@@ -2,14 +2,30 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, Sparkles, Loader2 } from 'lucide-react';
 import { getInvestmentAdvice } from '../services/geminiService';
 import { ChatMessage, ChatRole } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 const AiAdvisor: React.FC = () => {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: ChatRole.MODEL, text: "Welcome to Prestige Assets. I am Aura, your personal investment concierge. How may I assist you with your portfolio today?" }
-  ]);
+  
+  // Initialize chat with a personalized welcome if user is logged in
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+
+  useEffect(() => {
+    if (messages.length === 0) {
+      setMessages([
+        { 
+          role: ChatRole.MODEL, 
+          text: user 
+            ? `Welcome back, ${user.fullName.split(' ')[0]}. I have reviewed your ${user.investorType.toLowerCase()} profile preferences. How can I assist with your portfolio strategy today?`
+            : "Welcome to Prestige Assets. I am Aura, your personal investment concierge. How may I assist you with your portfolio today?"
+        }
+      ]);
+    }
+  }, [user]);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -28,7 +44,8 @@ const AiAdvisor: React.FC = () => {
     setMessages(prev => [...prev, { role: ChatRole.USER, text: userMessage }]);
     setIsLoading(true);
 
-    const advice = await getInvestmentAdvice(userMessage);
+    // Pass the user object to the service for context-aware answers
+    const advice = await getInvestmentAdvice(userMessage, user);
 
     setMessages(prev => [...prev, { role: ChatRole.MODEL, text: advice }]);
     setIsLoading(false);

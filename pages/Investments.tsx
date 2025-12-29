@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Investment } from '../types';
-import { TrendingUp, AlertCircle, Clock, Info, ChevronRight, BarChart2 } from 'lucide-react';
+import { TrendingUp, AlertCircle, Clock, Info, ChevronRight, BarChart2, Filter } from 'lucide-react';
 
 const investmentsData: Investment[] = [
   {
@@ -124,11 +124,16 @@ const GrowthChart: React.FC<{ scenarios: { conservative: number, moderate: numbe
 
 const Investments: React.FC = () => {
   const [filter, setFilter] = useState('All');
+  const [riskFilter, setRiskFilter] = useState('All');
+  
   const categories = ['All', 'Real Estate', 'Art', 'Jewelry', 'Artifacts', 'Alternative'];
+  const risks = ['All', 'Low', 'Medium', 'High'];
 
-  const filteredInvestments = filter === 'All' 
-    ? investmentsData 
-    : investmentsData.filter(item => item.category === filter);
+  const filteredInvestments = investmentsData.filter(item => {
+    const categoryMatch = filter === 'All' || item.category === filter;
+    const riskMatch = riskFilter === 'All' || item.riskLevel === riskFilter;
+    return categoryMatch && riskMatch;
+  });
 
   return (
     <div className="pt-20 min-h-screen bg-navy-900">
@@ -143,31 +148,55 @@ const Investments: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Filter Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-12 pb-4 border-b border-white/10">
-          <div className="flex flex-wrap gap-2">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setFilter(cat)}
-                className={`px-4 py-2 rounded text-xs font-mono uppercase tracking-wider transition-all ${
-                  filter === cat
-                    ? 'bg-gold-600 text-white'
-                    : 'bg-transparent text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+        {/* Advanced Filter Bar */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-12 pb-4 border-b border-white/10">
+          
+          <div className="space-y-4 w-full md:w-auto">
+             {/* Category Filter */}
+             <div className="flex flex-wrap gap-2">
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setFilter(cat)}
+                    className={`px-4 py-2 rounded text-xs font-mono uppercase tracking-wider transition-all ${
+                      filter === cat
+                        ? 'bg-gold-600 text-white'
+                        : 'bg-transparent text-slate-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+             </div>
+             
+             {/* Risk Filter Row */}
+             <div className="flex items-center gap-3 pl-1">
+                <span className="text-xs text-slate-500 flex items-center"><Filter size={12} className="mr-1"/> Risk Level:</span>
+                {risks.map((risk) => (
+                  <button
+                    key={risk}
+                    onClick={() => setRiskFilter(risk)}
+                    className={`text-xs font-medium px-2 py-1 rounded transition-colors ${
+                       riskFilter === risk 
+                       ? 'text-white bg-white/10' 
+                       : 'text-slate-500 hover:text-white'
+                    }`}
+                  >
+                    {risk}
+                  </button>
+                ))}
+             </div>
           </div>
-          <div className="text-slate-500 text-xs font-mono">
+
+          <div className="text-slate-500 text-xs font-mono whitespace-nowrap self-end md:self-center">
             SHOWING {filteredInvestments.length} ASSETS
           </div>
         </div>
 
         {/* Investment Cards Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredInvestments.map((inv) => (
+          {filteredInvestments.length > 0 ? (
+            filteredInvestments.map((inv) => (
             <div key={inv.id} className="bg-navy-800 rounded-sm overflow-hidden border border-white/5 hover:border-gold-500/50 transition-all duration-300 flex flex-col md:flex-row h-auto md:h-72 shadow-xl">
               
               {/* Image Section */}
@@ -254,7 +283,14 @@ const Investments: React.FC = () => {
               </div>
 
             </div>
-          ))}
+          ))) : (
+            <div className="col-span-full py-20 text-center border border-dashed border-white/10 rounded-sm bg-navy-800/50">
+              <p className="text-slate-400 font-serif text-lg">No assets match your specific criteria.</p>
+              <button onClick={() => { setFilter('All'); setRiskFilter('All'); }} className="mt-4 text-gold-500 text-sm hover:underline">
+                Reset Filters
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
