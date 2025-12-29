@@ -36,26 +36,42 @@ export const register = async (req: any, res: any) => {
 
     const role = data.email.toLowerCase().includes('admin') ? 'ADMIN' : 'USER';
 
-    const user = await prisma.user.create({
-      data: {
-        fullName: data.fullName,
-        email: data.email,
-        passwordHash,
-        country: data.country,
-        investorType: data.investorType,
-        interests: data.interests || [],
-        role,
-        onboardingCompleted: false
-      }
+    // Use transaction to ensure wallet is created with user
+    const result = await prisma.$transaction(async (tx: any) => {
+      const user = await tx.user.create({
+        data: {
+          fullName: data.fullName,
+          email: data.email,
+          passwordHash,
+          country: data.country,
+          investorType: data.investorType,
+          interests: JSON.stringify(data.interests || []), 
+          role,
+          onboardingCompleted: false
+        }
+      });
+
+      // Create Wallet
+      await tx.wallet.create({
+        data: { userId: user.id }
+      });
+
+      return user;
     });
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
+      { id: result.id, email: result.email, role: result.role },
       JWT_SECRET,
       { expiresIn: '24h' }
     );
 
-    const { passwordHash: _, ...userProfile } = user;
+    const userProfile = {
+      ...result,
+      interests: JSON.parse(result.interests || '[]'),
+      profileData: result.profileData ? JSON.parse(result.profileData) : {}
+    };
+    delete (userProfile as any).passwordHash;
+
     res.status(201).json({ user: userProfile, token });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
@@ -86,9 +102,16 @@ export const login = async (req: any, res: any) => {
       { expiresIn: '24h' }
     );
 
-    const { passwordHash: _, ...userProfile } = user;
+    const userProfile = {
+      ...user,
+      interests: JSON.parse(user.interests || '[]'),
+      profileData: user.profileData ? JSON.parse(user.profileData) : {}
+    };
+    delete (userProfile as any).passwordHash;
+
     res.json({ user: userProfile, token });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: 'Internal Server Error' });
   }
 };

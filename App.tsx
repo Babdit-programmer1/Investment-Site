@@ -17,6 +17,10 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Onboarding from './pages/Onboarding';
 import AdminDashboard from './pages/AdminDashboard';
+import Plans from './pages/Plans';
+import Statements from './pages/Statements';
+import WalletPage from './pages/Wallet';
+import KycVerification from './pages/KycVerification'; // Added
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -61,6 +65,10 @@ const App: React.FC = () => {
             
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+            <Route path="/plans" element={<ProtectedRoute><Plans /></ProtectedRoute>} />
+            <Route path="/statements" element={<ProtectedRoute><Statements /></ProtectedRoute>} />
+            <Route path="/wallet" element={<ProtectedRoute><WalletPage /></ProtectedRoute>} />
+            <Route path="/kyc" element={<ProtectedRoute><KycVerification /></ProtectedRoute>} />
             
             {/* Admin Routes */}
             <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />

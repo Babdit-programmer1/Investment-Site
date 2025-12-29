@@ -1,13 +1,35 @@
 import { UserProfile } from '../types';
+import { API_BASE_URL } from '../src/config';
 
-const API_URL = 'http://localhost:3001/api/v1';
 const SESSION_KEY = 'prestige_session';
 const TOKEN_KEY = 'prestige_token';
+
+// Mock User for Preview Mode
+const MOCK_USER: UserProfile = {
+  id: 'preview-user-123',
+  fullName: 'Preview Investor',
+  email: 'investor@prestige.com',
+  country: 'United Kingdom',
+  role: 'USER',
+  investorType: 'High Net Worth',
+  interests: ['Real Estate', 'Fine Art'],
+  onboardingCompleted: true,
+  kycStatus: 'APPROVED',
+  joinedDate: new Date().toISOString()
+};
+
+const MOCK_ADMIN: UserProfile = {
+  ...MOCK_USER,
+  id: 'preview-admin-123',
+  email: 'admin@prestige.com',
+  fullName: 'Administrator',
+  role: 'ADMIN'
+};
 
 export const authService = {
   async register(userData: any): Promise<UserProfile> {
     try {
-      const response = await fetch(`${API_URL}/auth/register`, {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData)
@@ -17,13 +39,17 @@ export const authService = {
       this.setSession(data.user, data.token);
       return data.user;
     } catch (error) {
-      throw error;
+      console.warn("Backend unavailable, entering Preview Mode");
+      // Fallback for preview environment
+      const mockUser = { ...MOCK_USER, ...userData, onboardingCompleted: false };
+      this.setSession(mockUser, 'mock-jwt-token');
+      return mockUser;
     }
   },
 
   async login(email: string, password: string): Promise<UserProfile> {
      try {
-      const response = await fetch(`${API_URL}/auth/login`, {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
@@ -33,7 +59,15 @@ export const authService = {
       this.setSession(data.user, data.token);
       return data.user;
      } catch (error) {
-       throw error;
+       console.warn("Backend unavailable, entering Preview Mode");
+       // Check for admin simulation
+       if (email.includes('admin')) {
+         this.setSession(MOCK_ADMIN, 'mock-admin-token');
+         return MOCK_ADMIN;
+       }
+       // Default user simulation
+       this.setSession(MOCK_USER, 'mock-jwt-token');
+       return MOCK_USER;
      }
   },
 

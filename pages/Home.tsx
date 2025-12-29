@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, TrendingUp, ShieldCheck, Globe, Database, Cpu, PieChart, Layers, BarChart } from 'lucide-react';
+import { ArrowRight, TrendingUp, ShieldCheck, Globe, Database, Cpu, PieChart, Layers, BarChart, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Home: React.FC = () => {
@@ -107,19 +107,22 @@ const Home: React.FC = () => {
                 title: "Real Estate", 
                 subtitle: "High-Yield & Growth",
                 desc: "Million-dollar properties in London, NYC, and Dubai. Focus on commercial conversion and luxury residential.",
-                stats: "12-15% Target IRR"
+                stats: "12-15% Target IRR",
+                timeframe: "3-5 Years"
               },
               { 
                 title: "Fine Art", 
                 subtitle: "Capital Preservation",
                 desc: "Blue-chip works from Post-War & Contemporary masters. Uncorrelated with public equity markets.",
-                stats: "10-18% Hist. APY"
+                stats: "10-18% Hist. APY",
+                timeframe: "5-10 Years"
               },
               { 
                 title: "Collectibles", 
                 subtitle: "Alternative Alpha",
                 desc: "Investment-grade watches, cars, and artifacts. Driven by diminishing supply and global collector demand.",
-                stats: "Outperforms S&P 500"
+                stats: "Outperforms S&P 500",
+                timeframe: "2-7 Years"
               }
             ].map((cat, i) => (
               <div key={i} className="group p-8 bg-navy-800 border border-white/5 hover:border-gold-500/30 rounded-sm transition-all duration-300">
@@ -134,9 +137,15 @@ const Home: React.FC = () => {
                 <p className="text-slate-400 text-sm leading-relaxed mb-6 border-b border-white/5 pb-6">
                   {cat.desc}
                 </p>
-                <div className="flex items-center text-white font-mono text-sm">
-                  <BarChart size={16} className="mr-2 text-emerald-400" />
-                  {cat.stats}
+                <div className="space-y-3">
+                    <div className="flex items-center text-white font-mono text-sm">
+                        <BarChart size={16} className="mr-2 text-emerald-400" />
+                        {cat.stats}
+                    </div>
+                    <div className="flex items-center text-slate-300 font-mono text-xs">
+                        <Clock size={16} className="mr-2 text-slate-500" />
+                        Est. Timeframe: <span className="text-white ml-2">{cat.timeframe}</span>
+                    </div>
                 </div>
               </div>
             ))}

@@ -4,10 +4,14 @@ import {
   getDashboardStats, 
   getInvestors, 
   verifyInvestor, 
+  rejectInvestor,
   createAsset,
   getPendingInvestments,
   approveInvestment,
-  refundInvestment
+  refundInvestment,
+  getTreasury,
+  getMultisigRequests,
+  approveMultisig
 } from '../controllers/adminController';
 
 const router = express.Router();
@@ -15,14 +19,23 @@ const router = express.Router();
 router.use(authenticateToken);
 router.use(requireAdmin);
 
+// Stats & Users
 router.get('/stats', getDashboardStats);
 router.get('/investors', getInvestors);
 router.patch('/investors/:id/verify', verifyInvestor);
+router.patch('/investors/:id/reject', rejectInvestor);
+
+// Assets
 router.post('/assets', createAsset);
 
-// Payment Approvals
+// Investment Approvals (Escrow)
 router.get('/approvals', getPendingInvestments);
 router.post('/approvals/:id/approve', approveInvestment);
 router.post('/approvals/:id/refund', refundInvestment);
+
+// Treasury & Custody (Multisig)
+router.get('/treasury', getTreasury);
+router.get('/multisig', getMultisigRequests);
+router.post('/multisig/:referenceId/approve', approveMultisig);
 
 export default router;

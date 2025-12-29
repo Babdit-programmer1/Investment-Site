@@ -30,6 +30,34 @@ export interface Investment {
   };
 }
 
+export interface InvestmentPlan {
+  id: string;
+  name: string;
+  riskLevel: string;
+  targetRoi: string;
+  minInvestment: number;
+  lockupPeriod: string;
+  allocation: Record<string, number>;
+  description: string;
+}
+
+export interface InvestorStatement {
+  id: string;
+  period: string;
+  generatedAt: string;
+  totalInvested: number;
+  currentValue: number;
+  roi: number;
+  content: {
+    assets: Array<{
+      ticker: string;
+      title: string;
+      category: string;
+      value: number;
+    }>
+  };
+}
+
 export interface UserProfile {
   id: string;
   fullName: string;
@@ -41,6 +69,7 @@ export interface UserProfile {
   onboardingCompleted: boolean;
   kycStatus: KycStatus;
   joinedDate: string;
+  planId?: string;
 }
 
 export interface InvestmentIntent {
@@ -55,6 +84,29 @@ export interface InvestmentIntent {
   createdAt: string;
   asset?: Investment;
   user?: UserProfile;
+}
+
+export interface WalletTransaction {
+  id: string;
+  type: 'DEPOSIT' | 'WITHDRAWAL' | 'INVEST' | 'RETURN';
+  amount: number;
+  currency: string;
+  reference: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface CryptoBalance {
+  id: string;
+  asset: string;
+  balance: number;
+}
+
+export interface Wallet {
+  id: string;
+  fiatBalance: number;
+  cryptoBalances: CryptoBalance[];
+  transactions: WalletTransaction[];
 }
 
 export interface ChatMessage {

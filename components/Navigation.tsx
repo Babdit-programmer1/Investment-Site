@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Gem, LogOut, LayoutDashboard, Shield } from 'lucide-react';
+import { Menu, X, Gem, LogOut, LayoutDashboard, Shield, PieChart, FileText, Wallet } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Navigation: React.FC = () => {
@@ -12,6 +12,7 @@ const Navigation: React.FC = () => {
   const navLinks = [
     { name: 'Home', path: '/' },
     { name: 'Investments', path: '/investments' },
+    { name: 'Strategies', path: '/plans' }, 
     { name: 'Resources', path: '/resources' },
     { name: 'Contact', path: '/contact' },
   ];
@@ -66,6 +67,20 @@ const Navigation: React.FC = () => {
                   </Link>
                 )}
                 <Link 
+                  to="/statements" 
+                  className="flex items-center text-sm font-medium text-slate-300 hover:text-white transition-colors"
+                  title="Reporting"
+                >
+                  <FileText className="h-4 w-4" />
+                </Link>
+                <Link 
+                  to="/wallet" 
+                  className="flex items-center text-sm font-medium text-slate-300 hover:text-white transition-colors"
+                  title="Wallet"
+                >
+                  <Wallet className="h-4 w-4" />
+                </Link>
+                <Link 
                   to="/dashboard" 
                   className="flex items-center text-sm font-medium text-white hover:text-gold-500 transition-colors"
                 >
@@ -99,6 +114,8 @@ const Navigation: React.FC = () => {
             {isAuthenticated && (
               <div className="border-t border-white/10 mt-4 pt-4">
                  <Link to="/dashboard" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-white/5 flex items-center"><LayoutDashboard className="h-5 w-5 mr-2" /> Dashboard</Link>
+                 <Link to="/wallet" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-white/5 flex items-center"><Wallet className="h-5 w-5 mr-2" /> Wallet</Link>
+                 <Link to="/statements" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-white/5 flex items-center"><FileText className="h-5 w-5 mr-2" /> Reporting</Link>
                  <button onClick={handleLogout} className="w-full text-left px-3 py-2 rounded-md text-base font-medium text-slate-400 hover:bg-white/5 flex items-center"><LogOut className="h-5 w-5 mr-2" /> Sign Out</button>
               </div>
             )}

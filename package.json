@@ -22,7 +22,9 @@
     "helmet": "^8.1.0",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.2.3",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "crypto": "^1.0.1",
+    "pdfkit": "^0.17.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

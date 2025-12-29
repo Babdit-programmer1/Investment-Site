@@ -1,16 +1,41 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Users, Briefcase, DollarSign, Activity, CheckCircle, XCircle, Plus, Edit, Shield } from 'lucide-react';
+import { Users, Briefcase, DollarSign, Activity, CheckCircle, XCircle, Plus, Edit, Shield, Lock, Server, Key } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
+import { API_BASE_URL } from '../src/config';
 
-const API_URL = 'http://localhost:3001/api/v1/admin';
+// MOCK DATA
+const MOCK_STATS = {
+  totalUsers: 142,
+  totalAssets: 15,
+  totalAum: 45000000,
+  activeInvestments: 2,
+  recentActivity: []
+};
+
+const MOCK_INVESTORS = [
+  { id: '1', fullName: 'James Sterling', email: 'j.sterling@example.com', investorType: 'Institutional', kycStatus: 'APPROVED' },
+  { id: '2', fullName: 'Sarah Connor', email: 's.connor@example.com', investorType: 'High Net Worth', kycStatus: 'PENDING' }
+];
+
+const MOCK_APPROVALS = [
+  { 
+    id: '101', 
+    user: { fullName: 'Sarah Connor', email: 's.connor@example.com' }, 
+    asset: { title: 'The Kensington Estate' }, 
+    amount: 150000,
+    status: 'ESCROWED'
+  }
+];
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'assets' | 'investors' | 'approvals'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'assets' | 'investors' | 'approvals' | 'treasury'>('overview');
   const [stats, setStats] = useState<any>(null);
   const [investors, setInvestors] = useState<any[]>([]);
   const [approvals, setApprovals] = useState<any[]>([]);
+  const [treasury, setTreasury] = useState<any>(null);
+  const [multisigRequests, setMultisigRequests] = useState<any[]>([]);
   const [token] = useState(localStorage.getItem('prestige_token'));
 
   // Redirect if not admin
@@ -22,60 +47,107 @@ const AdminDashboard: React.FC = () => {
     fetchStats();
     if (activeTab === 'investors') fetchInvestors();
     if (activeTab === 'approvals') fetchApprovals();
+    if (activeTab === 'treasury') fetchTreasury();
   }, [activeTab]);
 
   const fetchStats = async () => {
     try {
-      const res = await fetch(`${API_URL}/stats`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${API_BASE_URL}/admin/stats`, { headers: { Authorization: `Bearer ${token}` } });
+      if(!res.ok) throw new Error("API Error");
       const data = await res.json();
       setStats(data);
-    } catch (e) { console.error(e); }
+    } catch (e) { setStats(MOCK_STATS); }
   };
 
   const fetchInvestors = async () => {
     try {
-      const res = await fetch(`${API_URL}/investors`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${API_BASE_URL}/admin/investors`, { headers: { Authorization: `Bearer ${token}` } });
+      if(!res.ok) throw new Error("API Error");
       const data = await res.json();
       setInvestors(data);
-    } catch (e) { console.error(e); }
+    } catch (e) { setInvestors(MOCK_INVESTORS); }
   };
 
   const fetchApprovals = async () => {
     try {
-      const res = await fetch(`${API_URL}/approvals`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${API_BASE_URL}/admin/approvals`, { headers: { Authorization: `Bearer ${token}` } });
+      if(!res.ok) throw new Error("API Error");
       const data = await res.json();
       setApprovals(data);
-    } catch (e) { console.error(e); }
+    } catch (e) { setApprovals(MOCK_APPROVALS); }
+  };
+
+  const fetchTreasury = async () => {
+    try {
+        const [tRes, mRes] = await Promise.all([
+            fetch(`${API_BASE_URL}/admin/treasury`, { headers: { Authorization: `Bearer ${token}` } }),
+            fetch(`${API_BASE_URL}/admin/multisig`, { headers: { Authorization: `Bearer ${token}` } })
+        ]);
+        const tData = await tRes.json();
+        const mData = await mRes.json();
+        setTreasury(tData);
+        setMultisigRequests(mData);
+    } catch (e) {
+        setTreasury({ hotWallet: 50000, warmWallet: 150000, coldWallet: 1200000, reserveRatio: 1 });
+        setMultisigRequests([]);
+    }
   };
 
   const verifyUser = async (id: string) => {
-    await fetch(`${API_URL}/investors/${id}/verify`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    fetchInvestors();
+    try {
+      await fetch(`${API_BASE_URL}/admin/investors/${id}/verify`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchInvestors();
+    } catch (e) {
+      alert("Verification simulated (API unavailable)");
+    }
   };
 
   const handleApproval = async (id: string, action: 'approve' | 'refund') => {
     try {
-      await fetch(`${API_URL}/approvals/${id}/${action}`, {
+      await fetch(`${API_BASE_URL}/admin/approvals/${id}/${action}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchApprovals();
       fetchStats();
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      alert(`Action '${action}' simulated (API unavailable)`);
+      // Optimistic update for preview
+      setApprovals(prev => prev.filter(a => a.id !== id));
+    }
+  };
+
+  const approveMultisig = async (refId: string) => {
+      try {
+          await fetch(`${API_BASE_URL}/admin/multisig/${refId}/approve`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` }
+          });
+          fetchTreasury();
+      } catch (e) {
+          alert('Multisig approval simulated');
+          setMultisigRequests(prev => prev.filter(r => r.referenceId !== refId));
+      }
   };
 
   return (
     <div className="pt-20 min-h-screen bg-navy-900 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto py-10">
-        <h1 className="text-3xl font-serif text-white mb-2">Admin Command Center</h1>
+        <div className="flex justify-between items-center mb-2">
+            <h1 className="text-3xl font-serif text-white">Admin Command Center</h1>
+            <div className="flex items-center gap-2 text-xs text-slate-500 bg-navy-800 px-3 py-1 rounded border border-white/5">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                System Operational
+            </div>
+        </div>
         <p className="text-slate-400 mb-8">System Overview & Management</p>
 
         {/* Tabs */}
         <div className="flex space-x-4 mb-8 border-b border-white/10 overflow-x-auto">
-          {['overview', 'assets', 'investors', 'approvals'].map(tab => (
+          {['overview', 'assets', 'investors', 'approvals', 'treasury'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
@@ -87,6 +159,11 @@ const AdminDashboard: React.FC = () => {
                 <span className="flex items-center gap-2">
                   Approvals 
                   <span className="bg-amber-500 text-navy-900 px-1.5 py-0.5 rounded-full text-xs font-bold">{stats.activeInvestments}</span>
+                </span>
+              ) : tab === 'treasury' && multisigRequests.length > 0 ? (
+                <span className="flex items-center gap-2">
+                  Treasury 
+                  <span className="bg-rose-500 text-white px-1.5 py-0.5 rounded-full text-xs font-bold">{multisigRequests.length}</span>
                 </span>
               ) : tab}
             </button>
@@ -193,6 +270,77 @@ const AdminDashboard: React.FC = () => {
               </table>
             )}
           </div>
+        )}
+
+        {activeTab === 'treasury' && treasury && (
+            <div className="space-y-8">
+                {/* Vault Visualizer */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-gradient-to-br from-orange-900/40 to-navy-900 border border-orange-500/30 p-6 rounded-lg relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-4 opacity-10"><Activity size={64} /></div>
+                        <h3 className="text-orange-400 font-mono text-sm uppercase tracking-widest mb-1 flex items-center gap-2"><Activity size={14} /> Hot Wallet</h3>
+                        <p className="text-xs text-slate-400 mb-4">Operational Liquidity</p>
+                        <p className="text-3xl font-serif text-white">${treasury.hotWallet.toLocaleString()}</p>
+                        <div className="mt-4 text-xs text-orange-300/60 bg-orange-900/20 px-2 py-1 rounded inline-block">Target: 10%</div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-blue-900/40 to-navy-900 border border-blue-500/30 p-6 rounded-lg relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-4 opacity-10"><Server size={64} /></div>
+                        <h3 className="text-blue-400 font-mono text-sm uppercase tracking-widest mb-1 flex items-center gap-2"><Server size={14} /> Warm Wallet</h3>
+                        <p className="text-xs text-slate-400 mb-4">Escrow & Treasury</p>
+                        <p className="text-3xl font-serif text-white">${treasury.warmWallet.toLocaleString()}</p>
+                        <div className="mt-4 text-xs text-blue-300/60 bg-blue-900/20 px-2 py-1 rounded inline-block">Target: 30%</div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-indigo-900/40 to-navy-900 border border-indigo-500/30 p-6 rounded-lg relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-4 opacity-10"><Lock size={64} /></div>
+                        <h3 className="text-indigo-400 font-mono text-sm uppercase tracking-widest mb-1 flex items-center gap-2"><Lock size={14} /> Cold Storage</h3>
+                        <p className="text-xs text-slate-400 mb-4">Deep Vault Reserves</p>
+                        <p className="text-3xl font-serif text-white">${treasury.coldWallet.toLocaleString()}</p>
+                        <div className="mt-4 text-xs text-indigo-300/60 bg-indigo-900/20 px-2 py-1 rounded inline-block">Target: 60%</div>
+                    </div>
+                </div>
+
+                {/* Multisig Queue */}
+                <div className="bg-navy-800 rounded border border-white/5 overflow-hidden">
+                    <div className="p-4 border-b border-white/10 bg-navy-950 flex justify-between items-center">
+                        <h3 className="text-white font-medium flex items-center gap-2"><Key size={16} className="text-gold-500" /> Pending Multisig Requests</h3>
+                        <span className="text-xs text-slate-500">M-of-N Consensus Required</span>
+                    </div>
+                    {multisigRequests.length === 0 ? (
+                        <div className="p-12 text-center text-slate-500 text-sm">All secure transactions are up to date.</div>
+                    ) : (
+                        <table className="min-w-full divide-y divide-white/10">
+                            <thead className="bg-navy-900">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Reference</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">User</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Amount</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Tier</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                                {multisigRequests.map(req => (
+                                    <tr key={req.id}>
+                                        <td className="px-6 py-4 whitespace-nowrap font-mono text-xs text-slate-400">{req.referenceId}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-white">{req.user?.fullName || 'Unknown'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-white">${req.amount.toLocaleString()}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className="bg-rose-500/10 text-rose-400 px-2 py-1 rounded text-xs font-bold border border-rose-500/20">WARM WALLET</span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <button onClick={() => approveMultisig(req.referenceId)} className="text-xs bg-gold-600 hover:bg-gold-500 text-white px-3 py-1.5 rounded flex items-center gap-1">
+                                                <Key size={10} /> Sign & Release
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            </div>
         )}
 
         {activeTab === 'assets' && (

@@ -10,16 +10,28 @@ export const submitOnboarding = async (req: any, res: any) => {
 
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    const currentProfile = (user?.profileData as object) || {};
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Parse existing profileData
+    const currentProfile = user.profileData ? JSON.parse(user.profileData) : {};
     
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
-        profileData: { ...currentProfile, ...stepData }
+        profileData: JSON.stringify({ ...currentProfile, ...stepData })
       }
     });
-    res.json(updatedUser);
+
+    // Return parsed user
+    const responseUser = {
+      ...updatedUser,
+      interests: JSON.parse(updatedUser.interests || '[]'),
+      profileData: JSON.parse(updatedUser.profileData || '{}')
+    };
+
+    res.json(responseUser);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: 'Error saving onboarding data' });
   }
 };
@@ -34,7 +46,14 @@ export const completeOnboarding = async (req: any, res: any) => {
         kycStatus: 'PENDING'
       }
     });
-    res.json(updatedUser);
+
+    const responseUser = {
+      ...updatedUser,
+      interests: JSON.parse(updatedUser.interests || '[]'),
+      profileData: updatedUser.profileData ? JSON.parse(updatedUser.profileData) : {}
+    };
+
+    res.json(responseUser);
   } catch (error) {
     res.status(500).json({ message: 'Error completing onboarding' });
   }
