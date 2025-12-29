@@ -4,6 +4,7 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import { paymentService } from '../services/paymentService';
 import { randomUUID } from 'crypto';
 import { ledgerService } from '../services/ledgerService';
+import { riskEngine } from '../services/riskEngine';
 
 const prisma = new PrismaClient();
 
@@ -25,6 +26,12 @@ export const initiateInvestment = async (req: any, res: any) => {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return res.status(404).json({ message: 'User not found' });
 
+    // Risk Check
+    const riskAnalysis = await riskEngine.analyzeTransaction(userId, 'INVESTMENT', amount, { assetId, gateway });
+    if (riskAnalysis.action === 'BLOCK') {
+        return res.status(403).json({ message: 'Investment blocked by risk engine.', reasons: riskAnalysis.reasons });
+    }
+
     // Validate Asset
     const asset = await prisma.investment.findUnique({ where: { id: assetId } });
     if (!asset) return res.status(404).json({ message: 'Asset not found' });
@@ -38,6 +45,8 @@ export const initiateInvestment = async (req: any, res: any) => {
         if (!wallet || wallet.fiatBalance < amount) {
             return res.status(400).json({ message: 'Insufficient wallet balance' });
         }
+
+        const status = riskAnalysis.action === 'REVIEW' ? 'PENDING_APPROVAL' : 'ESCROWED';
 
         // Atomic: Deduct balance, Create Intent (Escrowed directly), Create Ledger
         const result = await prisma.$transaction(async (tx: any) => {
@@ -62,28 +71,30 @@ export const initiateInvestment = async (req: any, res: any) => {
                 }
             });
 
-            // Create Intent (Auto-Escrowed)
+            // Create Intent
             const intent = await tx.investmentIntent.create({
                 data: {
                     userId: userId!,
                     assetId,
                     amount,
                     currency: 'USD',
-                    status: 'ESCROWED',
+                    status: status === 'PENDING_APPROVAL' ? 'PENDING' : 'ESCROWED',
                     gateway: 'WALLET',
                     paymentReference: ref
                 }
             });
 
-            // Create Escrow Ledger
-            await tx.escrowLedger.create({
-                data: {
-                    intentId: intent.id,
-                    amount: amount,
-                    currency: 'USD',
-                    released: false
-                }
-            });
+            // Create Escrow Ledger (Only if approved or escrowed)
+            if (status === 'ESCROWED') {
+                await tx.escrowLedger.create({
+                    data: {
+                        intentId: intent.id,
+                        amount: amount,
+                        currency: 'USD',
+                        released: false
+                    }
+                });
+            }
 
             // Unified Ledger Log
             await ledgerService.recordEntry(tx, {
@@ -96,18 +107,27 @@ export const initiateInvestment = async (req: any, res: any) => {
               source: 'WALLET',
               balanceBefore,
               balanceAfter: updatedWallet.fiatBalance,
-              status: 'COMPLETED',
-              metadata: { assetId }
+              status: status === 'ESCROWED' ? 'COMPLETED' : 'PENDING_APPROVAL',
+              metadata: { assetId, riskScore: riskAnalysis.score }
             });
 
-            return intent;
+            return { intent, status };
         });
+
+        if (result.status === 'PENDING_APPROVAL') {
+             return res.json({
+                intentId: result.intent.id,
+                authorizationUrl: `${req.headers['origin']}/#/dashboard?status=pending_review`,
+                reference: result.intent.paymentReference,
+                message: 'Investment queued for risk review'
+            });
+        }
 
         // Redirect directly to dashboard as it is instant
         return res.json({
-            intentId: result.id,
+            intentId: result.intent.id,
             authorizationUrl: `${req.headers['origin']}/#/dashboard?status=success`,
-            reference: result.paymentReference
+            reference: result.intent.paymentReference
         });
     }
 

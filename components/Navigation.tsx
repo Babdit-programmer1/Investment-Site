@@ -1,17 +1,21 @@
+
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Gem, LogOut, LayoutDashboard, Shield, PieChart, FileText, Wallet } from 'lucide-react';
+import { Menu, X, Gem, LogOut, LayoutDashboard, Shield, FileText, Wallet, BarChart2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useGlobal } from '../context/GlobalContext';
+import LanguageCurrencySelector from './LanguageCurrencySelector';
 
 const Navigation: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
+  const { t } = useGlobal();
 
   const navLinks = [
-    { name: 'Home', path: '/' },
-    { name: 'Investments', path: '/investments' },
+    { name: t('nav.home'), path: '/' },
+    { name: t('nav.invest'), path: '/investments' },
     { name: 'Strategies', path: '/plans' }, 
     { name: 'Resources', path: '/resources' },
     { name: 'Contact', path: '/contact' },
@@ -42,10 +46,10 @@ const Navigation: React.FC = () => {
             </Link>
           </div>
           
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden md:flex items-center space-x-6">
             {navLinks.map((link) => (
               <Link
-                key={link.name}
+                key={link.path}
                 to={link.path}
                 className={`text-sm font-medium transition-colors duration-200 ${
                   isActive(link.path) ? 'text-gold-500' : 'text-slate-300 hover:text-white'
@@ -54,6 +58,8 @@ const Navigation: React.FC = () => {
                 {link.name}
               </Link>
             ))}
+
+            <LanguageCurrencySelector />
             
             {isAuthenticated ? (
               <div className="flex items-center space-x-4 pl-4 border-l border-white/10">
@@ -67,6 +73,13 @@ const Navigation: React.FC = () => {
                   </Link>
                 )}
                 <Link 
+                  to="/analytics" 
+                  className="flex items-center text-sm font-medium text-slate-300 hover:text-white transition-colors"
+                  title="Predictive Analytics"
+                >
+                  <BarChart2 className="h-4 w-4" />
+                </Link>
+                <Link 
                   to="/statements" 
                   className="flex items-center text-sm font-medium text-slate-300 hover:text-white transition-colors"
                   title="Reporting"
@@ -76,7 +89,7 @@ const Navigation: React.FC = () => {
                 <Link 
                   to="/wallet" 
                   className="flex items-center text-sm font-medium text-slate-300 hover:text-white transition-colors"
-                  title="Wallet"
+                  title={t('nav.wallet')}
                 >
                   <Wallet className="h-4 w-4" />
                 </Link>
@@ -85,7 +98,7 @@ const Navigation: React.FC = () => {
                   className="flex items-center text-sm font-medium text-white hover:text-gold-500 transition-colors"
                 >
                   <LayoutDashboard className="h-4 w-4 mr-2" />
-                  Dashboard
+                  {t('nav.dashboard')}
                 </Link>
                 <button onClick={handleLogout} className="text-slate-400 hover:text-white transition-colors" title="Sign Out">
                   <LogOut className="h-5 w-5" />
@@ -98,7 +111,8 @@ const Navigation: React.FC = () => {
               </div>
             )}
           </div>
-          <div className="md:hidden flex items-center">
+          <div className="md:hidden flex items-center gap-4">
+            <LanguageCurrencySelector />
             <button onClick={() => setIsOpen(!isOpen)} className="text-slate-300 hover:text-white focus:outline-none">
               {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
@@ -109,12 +123,13 @@ const Navigation: React.FC = () => {
         <div className="md:hidden bg-navy-900 border-b border-white/10">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             {navLinks.map((link) => (
-              <Link key={link.name} to={link.path} onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-slate-300 hover:text-white hover:bg-white/5">{link.name}</Link>
+              <Link key={link.path} to={link.path} onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-slate-300 hover:text-white hover:bg-white/5">{link.name}</Link>
             ))}
             {isAuthenticated && (
               <div className="border-t border-white/10 mt-4 pt-4">
-                 <Link to="/dashboard" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-white/5 flex items-center"><LayoutDashboard className="h-5 w-5 mr-2" /> Dashboard</Link>
-                 <Link to="/wallet" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-white/5 flex items-center"><Wallet className="h-5 w-5 mr-2" /> Wallet</Link>
+                 <Link to="/dashboard" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-white/5 flex items-center"><LayoutDashboard className="h-5 w-5 mr-2" /> {t('nav.dashboard')}</Link>
+                 <Link to="/analytics" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-white/5 flex items-center"><BarChart2 className="h-5 w-5 mr-2" /> Analytics</Link>
+                 <Link to="/wallet" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-white/5 flex items-center"><Wallet className="h-5 w-5 mr-2" /> {t('nav.wallet')}</Link>
                  <Link to="/statements" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-white/5 flex items-center"><FileText className="h-5 w-5 mr-2" /> Reporting</Link>
                  <button onClick={handleLogout} className="w-full text-left px-3 py-2 rounded-md text-base font-medium text-slate-400 hover:bg-white/5 flex items-center"><LogOut className="h-5 w-5 mr-2" /> Sign Out</button>
               </div>

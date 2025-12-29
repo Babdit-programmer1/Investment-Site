@@ -11,7 +11,9 @@ import {
   refundInvestment,
   getTreasury,
   getMultisigRequests,
-  approveMultisig
+  approveMultisig,
+  getComplianceAlerts,
+  getAuditLogs
 } from '../controllers/adminController';
 
 const router = express.Router();
@@ -37,5 +39,9 @@ router.post('/approvals/:id/refund', refundInvestment);
 router.get('/treasury', getTreasury);
 router.get('/multisig', getMultisigRequests);
 router.post('/multisig/:referenceId/approve', approveMultisig);
+
+// Compliance & Audit
+router.get('/compliance/alerts', getComplianceAlerts);
+router.get('/compliance/audit', getAuditLogs);
 
 export default router;

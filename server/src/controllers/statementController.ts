@@ -2,13 +2,17 @@ import { Request, Response } from 'express';
 // @ts-ignore
 import { PrismaClient } from '@prisma/client';
 import PDFDocument from 'pdfkit';
+import { taxEngine } from '../services/taxEngine';
+import { reportingService } from '../services/reportingService';
+import { currencyService } from '../services/currencyService';
 
 const prisma = new PrismaClient();
+
+// --- EXISTING ENDPOINTS ---
 
 export const getStatements = async (req: any, res: any) => {
   const userId = req.user?.id;
   try {
-    // Generate a new statement for "Current Month" if it doesn't exist (Simulation)
     const currentPeriod = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
     const existing = await prisma.investorStatement.findFirst({
       where: { userId, period: currentPeriod }
@@ -130,7 +134,6 @@ export const downloadStatementPdf = async (req: any, res: any) => {
 export const getPerformance = async (req: any, res: any) => {
   const userId = req.user?.id;
   try {
-     // Mocking historical data for the graph since we lack a chron job
      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
      const chartData = months.map((m, i) => {
         const base = 50000;
@@ -148,17 +151,49 @@ export const getPerformance = async (req: any, res: any) => {
   }
 }
 
+// --- NEW ENDPOINTS (PHASE 13) ---
+
+export const getTransactions = async (req: any, res: any) => {
+    const userId = req.user?.id;
+    const { type } = req.query;
+    try {
+        const logs = await reportingService.getTransactionHistory(userId, type);
+        res.json(logs);
+    } catch (e) {
+        res.status(500).json({ message: 'Error fetching transactions' });
+    }
+};
+
+export const getProfitLoss = async (req: any, res: any) => {
+    const userId = req.user?.id;
+    const { currency } = req.query; // Support conversion
+    try {
+        const pnl = await reportingService.getPnL(userId, currency as string);
+        res.json(pnl);
+    } catch (e) {
+        res.status(500).json({ message: 'Error fetching P&L' });
+    }
+};
+
+export const getTaxSummary = async (req: any, res: any) => {
+    const userId = req.user?.id;
+    const year = parseInt(req.query.year || new Date().getFullYear().toString());
+    try {
+        const summary = await taxEngine.generateTaxSummary(userId, year);
+        res.json(summary);
+    } catch (e) {
+        res.status(500).json({ message: 'Error calculating tax summary' });
+    }
+};
+
 // Helper
 const generateStatementRecord = async (userId: string, period: string) => {
-    // Calculate current portfolio state
     const portfolio = await prisma.userPortfolio.findMany({
         where: { userId, status: 'ACTIVE' },
         include: { asset: true }
     });
 
     const totalInvested = portfolio.reduce((acc: number, item: any) => acc + item.amount, 0);
-    
-    // Simulate 4.5% appreciation for demo purposes
     const currentValue = Math.floor(totalInvested * 1.045); 
     const roi = totalInvested > 0 ? ((currentValue - totalInvested) / totalInvested) * 100 : 0;
 

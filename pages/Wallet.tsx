@@ -1,7 +1,9 @@
+
 import React, { useEffect, useState } from 'react';
 import { Wallet as WalletIcon, ArrowUpRight, ArrowDownLeft, CreditCard, Bitcoin, RefreshCw, Loader2, DollarSign, FileText, CheckCircle, Clock, AlertCircle, Lock } from 'lucide-react';
 import { Wallet } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { useGlobal } from '../context/GlobalContext';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../src/config';
 
@@ -43,6 +45,7 @@ const WalletPage: React.FC = () => {
   const [logsLoading, setLogsLoading] = useState(false);
 
   const { user } = useAuth();
+  const { convertPrice, currency, t } = useGlobal();
   const navigate = useNavigate();
   const token = localStorage.getItem('prestige_token');
 
@@ -129,7 +132,6 @@ const WalletPage: React.FC = () => {
 
         if (action === 'WITHDRAWAL' && data.status === 'PENDING_APPROVAL') {
             setWithdrawalMessage(data.message);
-            // Don't close modal immediately, show message
         } else {
             await fetchWallet();
             await fetchLogs();
@@ -150,7 +152,7 @@ const WalletPage: React.FC = () => {
     <div className="min-h-screen bg-navy-900 pt-20">
       <div className="bg-navy-950 py-12 border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-serif text-white mb-2">My Wallet</h1>
+          <h1 className="text-3xl font-serif text-white mb-2">{t('nav.wallet')}</h1>
           <p className="text-slate-400">Manage your fiat and digital asset balances.</p>
         </div>
       </div>
@@ -181,7 +183,7 @@ const WalletPage: React.FC = () => {
                     </div>
                     <div className="relative z-10">
                         <p className="text-slate-400 font-mono text-xs uppercase tracking-widest mb-2">Available Balance</p>
-                        <h2 className="text-4xl text-white font-serif mb-6">${wallet?.fiatBalance.toLocaleString()} <span className="text-lg text-slate-500">USD</span></h2>
+                        <h2 className="text-4xl text-white font-serif mb-6">{convertPrice(wallet?.fiatBalance || 0)} <span className="text-lg text-slate-500">{currency}</span></h2>
                         
                         <div className="flex gap-4">
                             <button onClick={() => initiateAction('DEPOSIT')} className="flex items-center bg-gold-600 hover:bg-gold-500 text-white px-6 py-2 rounded-sm text-sm font-medium transition-colors">
@@ -242,7 +244,7 @@ const WalletPage: React.FC = () => {
                                       <p className={`text-sm font-bold ${
                                          log.actionType === 'DEPOSIT' || log.actionType === 'PROFIT' ? 'text-emerald-400' : 'text-white'
                                       }`}>
-                                         {log.actionType === 'DEPOSIT' || log.actionType === 'PROFIT' ? '+' : '-'}${log.amount.toLocaleString()}
+                                         {log.actionType === 'DEPOSIT' || log.actionType === 'PROFIT' ? '+' : '-'}{convertPrice(log.amount)}
                                       </p>
                                       <div className="flex items-center justify-end gap-1 mt-1">
                                          {log.status === 'COMPLETED' ? <CheckCircle size={10} className="text-emerald-500" /> : 
@@ -324,7 +326,7 @@ const WalletPage: React.FC = () => {
                             </div>
 
                             <div className="mb-6">
-                                <label className="block text-sm text-slate-400 mb-1">Amount</label>
+                                <label className="block text-sm text-slate-400 mb-1">Amount {asset === 'USD' ? '(USD)' : ''}</label>
                                 <input 
                                     type="number" 
                                     value={amount}

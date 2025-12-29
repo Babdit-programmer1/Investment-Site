@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Upload, User, MapPin, Camera, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { ShieldCheck, Upload, User, MapPin, Camera, CheckCircle, AlertCircle, Loader2, Briefcase } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../src/config';
 
@@ -42,7 +42,7 @@ const KycVerification: React.FC = () => {
       });
       const resData = await res.json();
       
-      if (currentStep < 4) {
+      if (currentStep < 5) {
         setCurrentStep(currentStep + 1);
       } else {
          navigate('/dashboard');
@@ -81,10 +81,12 @@ const KycVerification: React.FC = () => {
       case 1:
         return <IdentityStep onSubmit={handleStepSubmit} loading={loading} initialData={status?.details?.identity} />;
       case 2:
-        return <DocumentStep onSubmit={handleStepSubmit} loading={loading} />;
+        return <ClassificationStep onSubmit={handleStepSubmit} loading={loading} />;
       case 3:
-        return <AddressStep onSubmit={handleStepSubmit} loading={loading} />;
+        return <DocumentStep onSubmit={handleStepSubmit} loading={loading} />;
       case 4:
+        return <AddressStep onSubmit={handleStepSubmit} loading={loading} />;
+      case 5:
         return <LivenessStep onSubmit={handleStepSubmit} loading={loading} />;
       default:
         return <div>Unknown Step</div>;
@@ -104,7 +106,7 @@ const KycVerification: React.FC = () => {
           {status?.status !== 'APPROVED' && status?.status !== 'PENDING' && (
              <div className="flex justify-between mb-8 relative">
                 <div className="absolute top-1/2 left-0 w-full h-1 bg-navy-800 -z-10 rounded"></div>
-                {[1, 2, 3, 4].map(s => (
+                {[1, 2, 3, 4, 5].map(s => (
                    <div key={s} className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${s <= currentStep ? 'bg-gold-500 text-navy-900' : 'bg-navy-800 text-slate-500 border border-white/10'}`}>
                       {s < currentStep ? <CheckCircle size={14} /> : s}
                    </div>
@@ -163,6 +165,42 @@ const IdentityStep = ({ onSubmit, loading, initialData }: any) => {
       </button>
     </div>
   );
+};
+
+const ClassificationStep = ({ onSubmit, loading }: any) => {
+    const [type, setType] = useState('RETAIL');
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center gap-4 mb-6">
+                <div className="p-3 bg-navy-900 rounded-full border border-white/10"><Briefcase className="text-gold-500" /></div>
+                <div>
+                    <h3 className="text-white font-medium">Investor Classification</h3>
+                    <p className="text-xs text-slate-400">Determine your regulatory status.</p>
+                </div>
+            </div>
+
+            <div className="space-y-3">
+                {[
+                    { id: 'RETAIL', label: 'Retail Investor', desc: 'Net worth < $1M. Standard limits apply.' },
+                    { id: 'ACCREDITED', label: 'Accredited Investor', desc: 'Net worth > $1M or Income > $200k.' },
+                    { id: 'INSTITUTIONAL', label: 'Institutional', desc: 'Family Office, Fund, or Corporate Entity.' }
+                ].map((opt) => (
+                    <div 
+                        key={opt.id} 
+                        onClick={() => setType(opt.id)}
+                        className={`p-4 rounded border cursor-pointer transition-all ${type === opt.id ? 'bg-gold-600/20 border-gold-500' : 'bg-navy-900 border-white/10 hover:border-white/30'}`}
+                    >
+                        <h4 className="text-white font-medium text-sm">{opt.label}</h4>
+                        <p className="text-xs text-slate-400">{opt.desc}</p>
+                    </div>
+                ))}
+            </div>
+
+            <button onClick={() => onSubmit({ classification: type })} disabled={loading} className="w-full bg-gold-600 hover:bg-gold-500 text-white py-3 rounded font-medium mt-4 disabled:opacity-50">
+                {loading ? <Loader2 className="animate-spin mx-auto" /> : 'Confirm Status'}
+            </button>
+        </div>
+    );
 };
 
 const DocumentStep = ({ onSubmit, loading }: any) => {

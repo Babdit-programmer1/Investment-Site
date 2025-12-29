@@ -1,26 +1,31 @@
-import React from 'react';
+
+import React, { Suspense, lazy } from 'react';
 import { HashRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { GlobalProvider } from './context/GlobalContext';
 import Navigation from './components/Navigation';
 import Footer from './components/Footer';
 import AiAdvisor from './components/AiAdvisor';
 import ProtectedRoute from './components/ProtectedRoute';
+import { Loader2 } from 'lucide-react';
 
-import Home from './pages/Home';
-import About from './pages/About';
-import Investments from './pages/Investments';
-import HowItWorks from './pages/HowItWorks';
-import Resources from './pages/Resources';
-import Contact from './pages/Contact';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import Onboarding from './pages/Onboarding';
-import AdminDashboard from './pages/AdminDashboard';
-import Plans from './pages/Plans';
-import Statements from './pages/Statements';
-import WalletPage from './pages/Wallet';
-import KycVerification from './pages/KycVerification'; // Added
+// Lazy Load Pages for Performance Optimization
+const Home = lazy(() => import('./pages/Home'));
+const About = lazy(() => import('./pages/About'));
+const Investments = lazy(() => import('./pages/Investments'));
+const HowItWorks = lazy(() => import('./pages/HowItWorks'));
+const Resources = lazy(() => import('./pages/Resources'));
+const Contact = lazy(() => import('./pages/Contact'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Onboarding = lazy(() => import('./pages/Onboarding'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const Plans = lazy(() => import('./pages/Plans'));
+const Statements = lazy(() => import('./pages/Statements'));
+const WalletPage = lazy(() => import('./pages/Wallet'));
+const KycVerification = lazy(() => import('./pages/KycVerification'));
+const Analytics = lazy(() => import('./pages/Analytics'));
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -29,6 +34,13 @@ const ScrollToTop = () => {
   }, [pathname]);
   return null;
 };
+
+const LoadingFallback = () => (
+  <div className="flex flex-col items-center justify-center min-h-[60vh] bg-navy-900">
+    <Loader2 className="w-10 h-10 text-gold-500 animate-spin mb-4" />
+    <p className="text-slate-400 font-serif animate-pulse">Loading Prestige Assets...</p>
+  </div>
+);
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
@@ -39,7 +51,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     <div className="flex flex-col min-h-screen bg-navy-900 text-slate-200">
       <Navigation />
       <main className="flex-grow">
-        {children}
+        <Suspense fallback={<LoadingFallback />}>
+          {children}
+        </Suspense>
       </main>
       {!isAuthPage && !isAdminPage && <Footer />}
       {!isAuthPage && !isAdminPage && <AiAdvisor />}
@@ -49,33 +63,36 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <Router>
-        <ScrollToTop />
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/investments" element={<Investments />} />
-            <Route path="/how-it-works" element={<HowItWorks />} />
-            <Route path="/resources" element={<Resources />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
-            <Route path="/plans" element={<ProtectedRoute><Plans /></ProtectedRoute>} />
-            <Route path="/statements" element={<ProtectedRoute><Statements /></ProtectedRoute>} />
-            <Route path="/wallet" element={<ProtectedRoute><WalletPage /></ProtectedRoute>} />
-            <Route path="/kyc" element={<ProtectedRoute><KycVerification /></ProtectedRoute>} />
-            
-            {/* Admin Routes */}
-            <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-          </Routes>
-        </Layout>
-      </Router>
-    </AuthProvider>
+    <GlobalProvider>
+      <AuthProvider>
+        <Router>
+          <ScrollToTop />
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/investments" element={<Investments />} />
+              <Route path="/how-it-works" element={<HowItWorks />} />
+              <Route path="/resources" element={<Resources />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+              <Route path="/plans" element={<ProtectedRoute><Plans /></ProtectedRoute>} />
+              <Route path="/statements" element={<ProtectedRoute><Statements /></ProtectedRoute>} />
+              <Route path="/wallet" element={<ProtectedRoute><WalletPage /></ProtectedRoute>} />
+              <Route path="/kyc" element={<ProtectedRoute><KycVerification /></ProtectedRoute>} />
+              <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+              
+              {/* Admin Routes */}
+              <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+            </Routes>
+          </Layout>
+        </Router>
+      </AuthProvider>
+    </GlobalProvider>
   );
 };
 

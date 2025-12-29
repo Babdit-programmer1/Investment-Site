@@ -1,7 +1,8 @@
+
 import React, { useMemo, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
-import { TrendingUp, Activity, Briefcase, ShieldCheck, AlertCircle, Wallet, ChevronRight, FileText, User, MapPin, PieChart, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { TrendingUp, Activity, Briefcase, ShieldCheck, AlertCircle, Wallet, ChevronRight, FileText, User, MapPin, PieChart, ArrowUpRight, Sparkles } from 'lucide-react';
 import { InvestmentIntent, InvestmentPlan } from '../types';
 import { API_BASE_URL } from '../src/config';
 
@@ -52,6 +53,7 @@ const Dashboard: React.FC = () => {
   const [myPlan, setMyPlan] = useState<InvestmentPlan | null>(null);
   const [walletBalance, setWalletBalance] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [recommendation, setRecommendation] = useState<any>(null);
 
   // Redirect to onboarding if not complete
   if (user && !user.onboardingCompleted) {
@@ -81,11 +83,12 @@ const Dashboard: React.FC = () => {
       const token = localStorage.getItem('prestige_token');
       const headers = { 'Authorization': `Bearer ${token}` };
 
-      const [invRes, perfRes, planRes, walletRes] = await Promise.all([
+      const [invRes, perfRes, planRes, walletRes, recRes] = await Promise.all([
         fetch(`${API_BASE_URL}/payments/my`, { headers }),
         fetch(`${API_BASE_URL}/reporting/performance`, { headers }),
         fetch(`${API_BASE_URL}/reporting/plans`, { headers }),
-        fetch(`${API_BASE_URL}/wallet`, { headers })
+        fetch(`${API_BASE_URL}/wallet`, { headers }),
+        fetch(`${API_BASE_URL}/analytics/recommendation`, { headers })
       ]);
 
       if (!invRes.ok) throw new Error("API Failed");
@@ -101,6 +104,10 @@ const Dashboard: React.FC = () => {
           setWalletBalance(walletData.fiatBalance || 0);
       }
 
+      if (recRes.ok) {
+          setRecommendation(await recRes.json());
+      }
+
       // Find my plan if assigned
       if (user?.planId) {
         const plansData = await planRes.json();
@@ -112,6 +119,11 @@ const Dashboard: React.FC = () => {
       setInvestments(MOCK_ACTIVE_INVESTMENTS);
       setPerformance(MOCK_PERFORMANCE);
       setWalletBalance(15000); // Mock balance for preview
+      setRecommendation({
+          matchScore: 92,
+          reason: "Diversify your portfolio with high-yield assets matching your interest in Real Estate.",
+          recommendation: { title: "New Asset Suggestion", ticker: "AI-RECO" }
+      });
     } finally {
       setLoading(false);
     }
@@ -270,6 +282,33 @@ const Dashboard: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
+        {/* AI Recommendation Widget (New) */}
+        {recommendation && recommendation.recommendation && (
+            <div className="mb-8 bg-gradient-to-r from-purple-900/30 to-navy-900 border border-purple-500/20 p-6 rounded-lg flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg shadow-purple-900/10">
+                <div className="flex items-start gap-4">
+                    <div className="p-3 bg-purple-500/10 rounded-full border border-purple-500/30">
+                        <Sparkles className="text-purple-400 w-6 h-6" />
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <h3 className="text-white font-medium">Aura's Smart Pick</h3>
+                            <span className="bg-purple-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{recommendation.matchScore}% Match</span>
+                        </div>
+                        <p className="text-slate-400 text-sm mb-2 max-w-xl">{recommendation.reason}</p>
+                        <p className="text-white font-serif text-lg">{recommendation.recommendation.title}</p>
+                    </div>
+                </div>
+                <div className="flex gap-3 w-full md:w-auto">
+                    <Link to="/analytics" className="flex-1 md:flex-none text-center px-4 py-2 border border-white/10 text-slate-300 rounded hover:text-white hover:bg-white/5 transition-colors text-sm">
+                        Analyze
+                    </Link>
+                    <Link to="/investments" className="flex-1 md:flex-none text-center px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded shadow-lg shadow-purple-900/20 text-sm font-medium transition-colors">
+                        View Details
+                    </Link>
+                </div>
+            </div>
+        )}
+
         {/* Stats Grid - Glassmorphism */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           {stats.map((stat, i) => (

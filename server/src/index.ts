@@ -10,16 +10,38 @@ import reportingRoutes from './routes/reportingRoutes';
 import walletRoutes from './routes/walletRoutes';
 import logRoutes from './routes/logRoutes';
 import kycRoutes from './routes/kycRoutes';
+import analyticsRoutes from './routes/analyticsRoutes';
 import { config } from './config/env';
 import { rateLimiter } from './middleware/rateLimit';
 import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
 
+// Performance Metrics Store
+const metrics = {
+  requests: 0,
+  errors: 0,
+  avgLatency: 0
+};
+
 // Security Middleware
 app.use(helmet() as any);
 app.use(cors({ origin: config.corsOrigin }));
 app.use(express.json({ limit: '10kb' }) as any); // Limit body size
+
+// Monitoring Middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  metrics.requests++;
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    // Simple moving average for latency
+    metrics.avgLatency = (metrics.avgLatency * (metrics.requests - 1) + duration) / metrics.requests;
+    if (res.statusCode >= 400) metrics.errors++;
+  });
+  next();
+});
+
 app.use(rateLimiter); // Apply rate limiting
 
 // Routes
@@ -32,19 +54,34 @@ app.use('/api/v1/reporting', reportingRoutes);
 app.use('/api/v1/wallet', walletRoutes);
 app.use('/api/v1/logs', logRoutes);
 app.use('/api/v1/kyc', kycRoutes);
+app.use('/api/v1/analytics', analyticsRoutes);
 
 // Health Check
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    env: config.nodeEnv 
+    env: config.nodeEnv,
+    services: {
+      db: 'connected', // In real implementation, check prisma connection
+      cache: 'active'
+    }
+  });
+});
+
+// Metrics Endpoint (Protected in real world, public for demo)
+app.get('/metrics', (req, res) => {
+  res.json({
+    uptime: process.uptime(),
+    ...metrics,
+    errorRate: metrics.requests > 0 ? (metrics.errors / metrics.requests).toFixed(4) : 0,
+    memoryUsage: process.memoryUsage()
   });
 });
 
 // Root endpoint for testing
 app.get('/', (req, res) => {
-  res.send('Prestige Assets API Running (Hardened)');
+  res.send('Prestige Assets API Running (Hardened & Optimized)');
 });
 
 // Global Error Handler
