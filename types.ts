@@ -1,20 +1,50 @@
+export type Role = 'USER' | 'ADMIN';
+export type KycStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type InvestmentStatus = 'ACTIVE' | 'CLOSED' | 'UPCOMING';
+
+export enum ChatRole {
+  USER = 'user',
+  MODEL = 'model'
+}
+
 export interface Investment {
   id: string;
-  title: string;
   ticker: string;
-  category: 'Real Estate' | 'Art' | 'Jewelry' | 'Artifacts' | 'Alternative';
-  price: string;
-  returnRate: string;
-  roiTimeframe: string;
-  riskLevel: 'Low' | 'Medium' | 'High';
-  imageUrl: string;
-  description: string;
+  title: string;
+  category: string;
   fundStrategy: string;
+  description: string;
+  imageUrl: string;
+  price: string;
+  minInvestment: number;
+  returnRate: string;
+  targetIrp: number;
+  term: string;
+  riskLevel: 'Low' | 'Medium' | 'High';
+  status: InvestmentStatus;
   scenarios: {
-    conservative: number; // Percentage return
+    conservative: number;
     moderate: number;
     aggressive: number;
   };
+}
+
+export interface UserProfile {
+  id: string;
+  fullName: string;
+  email: string;
+  country: string;
+  role: Role;
+  investorType: 'Individual' | 'High Net Worth' | 'Institutional';
+  interests: string[];
+  onboardingCompleted: boolean;
+  kycStatus: KycStatus;
+  joinedDate: string;
+}
+
+export interface ChatMessage {
+  role: ChatRole | 'user' | 'model';
+  text: string;
 }
 
 export interface TeamMember {
@@ -37,31 +67,4 @@ export interface BlogPost {
 export interface FaqItem {
   question: string;
   answer: string;
-}
-
-export enum ChatRole {
-  USER = 'user',
-  MODEL = 'model'
-}
-
-export interface ChatMessage {
-  role: ChatRole;
-  text: string;
-}
-
-// User & Auth Types
-export interface UserProfile {
-  id: string;
-  fullName: string;
-  email: string;
-  country: string;
-  investorType: 'Individual' | 'High Net Worth' | 'Institutional';
-  interests: string[];
-  joinedDate: string;
-}
-
-export interface AuthState {
-  user: UserProfile | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
 }

@@ -1,12 +1,16 @@
 import React, { useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { PieChart, TrendingUp, DollarSign, Activity, Briefcase, Download, Clock, ShieldCheck } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
+import { PieChart, TrendingUp, DollarSign, Activity, Briefcase, Download, ShieldCheck, AlertCircle } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
 
-  // Simulate portfolio data based on investor type to make the preview look "Active"
+  // Redirect to onboarding if not complete
+  if (user && !user.onboardingCompleted) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
   const stats = useMemo(() => {
     if (user?.investorType === 'High Net Worth' || user?.investorType === 'Institutional') {
       return [
@@ -38,9 +42,7 @@ const Dashboard: React.FC = () => {
               <div className="flex items-center mt-2 space-x-4 text-sm text-slate-400">
                 <span className="flex items-center"><ShieldCheck className="h-4 w-4 mr-1 text-emerald-500" /> Verified Investor</span>
                 <span>|</span>
-                <span>ID: {user?.id}</span>
-                <span>|</span>
-                <span className="text-gold-500">{user?.investorType} Account</span>
+                <span className={`uppercase font-bold text-xs ${user?.kycStatus === 'PENDING' ? 'text-amber-500' : 'text-emerald-500'}`}>{user?.kycStatus} Status</span>
               </div>
             </div>
             <div className="mt-4 md:mt-0 flex space-x-3">
@@ -52,12 +54,20 @@ const Dashboard: React.FC = () => {
                </Link>
             </div>
           </div>
+          
+          {user?.kycStatus === 'PENDING' && (
+            <div className="mt-6 bg-amber-500/10 border border-amber-500/20 p-4 rounded flex items-start">
+               <AlertCircle className="text-amber-500 h-5 w-5 mr-3 mt-0.5" />
+               <div>
+                 <h4 className="text-amber-500 font-medium text-sm">Account Under Review</h4>
+                 <p className="text-amber-200/70 text-sm mt-1">Your compliance documents are being processed. Investment capabilities are currently restricted.</p>
+               </div>
+            </div>
+          )}
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Stats Row */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           {stats.map((stat, i) => (
             <div key={i} className="bg-navy-800 p-6 rounded-sm border border-white/5">
@@ -80,8 +90,6 @@ const Dashboard: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Main Chart Area */}
           <div className="lg:col-span-2 bg-navy-800 rounded-sm border border-white/5 p-6 min-h-[400px]">
              <div className="flex justify-between items-center mb-6">
                <h3 className="text-lg font-serif text-white">Portfolio Performance</h3>
@@ -95,79 +103,40 @@ const Dashboard: React.FC = () => {
              </div>
              
              {hasActivePortfolio ? (
-               // Simulated Chart for HNW Users
                <div className="h-64 w-full flex items-end justify-between space-x-1 px-2 relative">
-                  {/* Grid lines */}
                   <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20">
                      <div className="border-t border-slate-500 w-full h-0"></div>
                      <div className="border-t border-slate-500 w-full h-0"></div>
                      <div className="border-t border-slate-500 w-full h-0"></div>
                      <div className="border-t border-slate-500 w-full h-0"></div>
                   </div>
-                  
-                  {/* Bars */}
                   {[35, 38, 36, 42, 45, 43, 50, 55, 53, 58, 62, 65, 60, 68, 72, 75, 78, 82, 80, 85, 90, 88, 92, 95].map((h, i) => (
-                    <div 
-                      key={i} 
-                      className="w-full bg-gradient-to-t from-gold-600/50 to-gold-400 rounded-t-sm hover:from-gold-500 hover:to-white transition-all duration-300"
-                      style={{ height: `${h}%` }}
-                      title={`Week ${i+1}`}
-                    ></div>
+                    <div key={i} className="w-full bg-gradient-to-t from-gold-600/50 to-gold-400 rounded-t-sm hover:from-gold-500 hover:to-white transition-all duration-300" style={{ height: `${h}%` }}></div>
                   ))}
                </div>
              ) : (
-               // Empty State for New Users
                <div className="h-64 flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded">
                  <div className="p-4 bg-navy-900 rounded-full mb-4">
                    <TrendingUp className="h-8 w-8 text-slate-600" />
                  </div>
                  <p className="text-slate-300 font-medium">No active performance data</p>
-                 <p className="text-slate-500 text-sm mt-1">Make your first investment to see analytics</p>
-                 <Link to="/investments" className="mt-4 text-gold-500 text-sm font-medium hover:underline">
-                   Browse Marketplace
-                 </Link>
+                 <Link to="/investments" className="mt-4 text-gold-500 text-sm font-medium hover:underline">Browse Marketplace</Link>
                </div>
              )}
           </div>
 
-          {/* Side Panel: Profile & Interests */}
           <div className="space-y-6">
-            
-            {/* Interests Widget */}
             <div className="bg-navy-800 rounded-sm border border-white/5 p-6">
               <h3 className="text-lg font-serif text-white mb-4">Your Interests</h3>
               <div className="flex flex-wrap gap-2 mb-6">
                 {user?.interests && user.interests.length > 0 ? (
                   user.interests.map(tag => (
-                    <span key={tag} className="px-3 py-1 bg-navy-900 text-gold-500 text-xs rounded border border-gold-500/20">
-                      {tag}
-                    </span>
+                    <span key={tag} className="px-3 py-1 bg-navy-900 text-gold-500 text-xs rounded border border-gold-500/20">{tag}</span>
                   ))
-                ) : (
-                  <span className="text-slate-500 text-sm">No interests selected.</span>
-                )}
+                ) : <span className="text-slate-500 text-sm">No interests selected.</span>}
               </div>
-              <p className="text-slate-400 text-xs leading-relaxed">
-                We'll use these preferences to curate your "Recommended for You" feed with relevant high-value assets.
-              </p>
             </div>
-
-            {/* AI Insight Widget */}
-            <div className="bg-gradient-to-br from-navy-800 to-navy-900 rounded-sm border border-gold-500/20 p-6 relative overflow-hidden">
-               <div className="absolute top-0 right-0 p-4 opacity-10">
-                 <Activity size={100} className="text-gold-500" />
-               </div>
-               <h3 className="text-lg font-serif text-white mb-2">Market Insight</h3>
-               <p className="text-sm text-slate-400 mb-4">
-                 Based on your interest in <span className="text-white">{user?.interests?.[0] || 'Alternative Assets'}</span>, our AI analyst suggests reviewing the Q3 Luxury Real Estate Report.
-               </p>
-               <button className="text-xs font-bold text-gold-500 uppercase tracking-wide flex items-center hover:text-white transition-colors">
-                 Read Report <TrendingUp className="ml-1 h-3 w-3" />
-               </button>
-            </div>
-
           </div>
-
         </div>
       </div>
     </div>
