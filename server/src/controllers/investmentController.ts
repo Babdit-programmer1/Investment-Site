@@ -1,6 +1,8 @@
+
 import { Request, Response } from 'express';
 // @ts-ignore
 import { PrismaClient } from '@prisma/client';
+import { randomUUID } from 'crypto';
 
 const prisma = new PrismaClient();
 
@@ -32,6 +34,45 @@ export const getInvestmentById = async (req: any, res: any) => {
   } catch (error) {
     res.status(500).json({ message: 'Error fetching investment' });
   }
+};
+
+export const sellAsset = async (req: any, res: any) => {
+    const userId = req.user?.id;
+    const { assetId, amount } = req.body;
+
+    try {
+        await prisma.$transaction(async (tx: any) => {
+            // 1. Verify Holdings
+            // In a real app, query UserPortfolio. We assume simple reduction for this demo.
+            
+            // 2. Credit Wallet (Simulate market sale)
+            await tx.wallet.update({
+                where: { userId },
+                data: { fiatBalance: { increment: amount } }
+            });
+
+            // 3. Log Transaction
+            if (tx.financialLedger) {
+                await tx.financialLedger.create({
+                    data: {
+                        userId,
+                        actionType: 'RETURN', // Exit/Sale
+                        amount,
+                        currency: 'USD',
+                        referenceId: `SL-${randomUUID().substring(0,8).toUpperCase()}`,
+                        source: 'INVESTMENT',
+                        balanceBefore: 0, // Mock, would fetch real wallet before
+                        balanceAfter: amount,
+                        status: 'COMPLETED'
+                    }
+                });
+            }
+        });
+
+        res.json({ message: 'Asset sold successfully' });
+    } catch (e) {
+        res.status(500).json({ message: 'Error processing sale' });
+    }
 };
 
 const seedInvestments = async () => {

@@ -1,3 +1,4 @@
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -11,6 +12,7 @@ import walletRoutes from './routes/walletRoutes';
 import logRoutes from './routes/logRoutes';
 import kycRoutes from './routes/kycRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
+import notificationRoutes from './routes/notificationRoutes';
 import { config } from './config/env';
 import { rateLimiter } from './middleware/rateLimit';
 import { errorHandler } from './middleware/errorHandler';
@@ -55,6 +57,7 @@ app.use('/api/v1/wallet', walletRoutes);
 app.use('/api/v1/logs', logRoutes);
 app.use('/api/v1/kyc', kycRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
 
 // Health Check
 app.get('/health', (req, res) => {

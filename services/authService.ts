@@ -1,3 +1,4 @@
+
 import { UserProfile } from '../types';
 import { API_BASE_URL } from '../src/config';
 
@@ -15,7 +16,8 @@ const MOCK_USER: UserProfile = {
   interests: ['Real Estate', 'Fine Art'],
   onboardingCompleted: true,
   kycStatus: 'APPROVED',
-  joinedDate: new Date().toISOString()
+  joinedDate: new Date().toISOString(),
+  profileData: { phone: '+44 20 7123 4567', emailAlerts: true }
 };
 
 const MOCK_ADMIN: UserProfile = {
@@ -71,10 +73,39 @@ export const authService = {
      }
   },
 
-  async updateProfile(user: UserProfile) {
-    const session = localStorage.getItem(SESSION_KEY);
-    if(session) {
-      localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+  async updateProfile(userData: Partial<UserProfile> & { phone?: string, emailAlerts?: boolean, pushAlerts?: boolean, twoFactor?: boolean }) {
+    try {
+      const token = this.getToken();
+      if (!token) throw new Error("Not authenticated");
+
+      const response = await fetch(`${API_BASE_URL}/auth/me`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(userData)
+      });
+
+      if (!response.ok) throw new Error('Failed to update profile');
+      const updatedUser = await response.json();
+      
+      // Update local session
+      this.setSession(updatedUser, token);
+      return updatedUser;
+    } catch (error) {
+      console.warn("Backend unavailable, updating local session only");
+      const current = this.getCurrentUser();
+      if(current) {
+        // Merge simple top-level and profileData for mock
+        const updated = { 
+            ...current, 
+            ...userData,
+            profileData: { ...current.profileData, ...userData } 
+        };
+        this.setSession(updated, this.getToken() || 'mock-token');
+        return updated;
+      }
     }
   },
 

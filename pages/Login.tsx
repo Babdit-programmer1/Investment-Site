@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -117,9 +118,9 @@ const Login: React.FC = () => {
               </div>
 
               <div className="text-sm">
-                <a href="#" className="font-medium text-gold-500 hover:text-gold-400">
+                <Link to="/forgot-password" className="font-medium text-gold-500 hover:text-gold-400">
                   Forgot your password?
-                </a>
+                </Link>
               </div>
             </div>
 

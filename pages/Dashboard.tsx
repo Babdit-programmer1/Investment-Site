@@ -2,9 +2,10 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
-import { TrendingUp, Activity, Briefcase, ShieldCheck, AlertCircle, Wallet, ChevronRight, FileText, User, MapPin, PieChart, ArrowUpRight, Sparkles } from 'lucide-react';
+import { TrendingUp, Activity, Briefcase, ShieldCheck, AlertCircle, Wallet, ChevronRight, FileText, User, MapPin, PieChart, ArrowUpRight, Sparkles, RefreshCw, MoreHorizontal } from 'lucide-react';
 import { InvestmentIntent, InvestmentPlan } from '../types';
 import { API_BASE_URL } from '../src/config';
+import TradeModal from '../components/TradeModal';
 
 // Mock Data
 const MOCK_PERFORMANCE = [
@@ -54,6 +55,7 @@ const Dashboard: React.FC = () => {
   const [walletBalance, setWalletBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const [recommendation, setRecommendation] = useState<any>(null);
+  const [selectedAsset, setSelectedAsset] = useState<any>(null);
 
   // Redirect to onboarding if not complete
   if (user && !user.onboardingCompleted) {
@@ -350,32 +352,53 @@ const Dashboard: React.FC = () => {
                  <SimpleChart data={performance} />
              </div>
 
-             {/* Recent Transactions */}
-             <div className="bg-navy-800 rounded-lg border border-white/5 p-8">
-                <h3 className="text-lg font-serif text-white mb-6">Recent Activity</h3>
+             {/* Holdings / Secondary Market Interaction */}
+             <div className="bg-navy-800 rounded-lg border border-white/5 overflow-hidden">
+                <div className="p-6 border-b border-white/5 flex justify-between items-center">
+                    <h3 className="text-lg font-serif text-white">My Holdings</h3>
+                    <Link to="/investments" className="text-xs text-gold-500 hover:text-white uppercase tracking-wider font-bold">Marketplace</Link>
+                </div>
+                
                 {investments.length > 0 ? (
-                  <div className="space-y-4">
-                    {investments.slice(0, 3).map((inv) => (
-                      <div key={inv.id} className="flex items-center justify-between p-4 bg-navy-900/50 rounded-lg border border-white/5 hover:border-gold-500/20 transition-colors group">
+                  <div className="divide-y divide-white/5">
+                    {investments.map((inv) => (
+                      <div key={inv.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between hover:bg-navy-900/50 transition-colors gap-4">
                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded bg-navy-800 flex items-center justify-center border border-white/10 text-gold-500 font-serif font-bold text-lg group-hover:text-white group-hover:bg-gold-600 transition-colors">
+                            <div className="w-10 h-10 rounded bg-navy-900 flex items-center justify-center border border-white/10 text-slate-300 font-serif font-bold group-hover:text-gold-500 transition-colors">
                                 {inv.asset?.ticker?.substring(0,2) || 'AS'}
                             </div>
                             <div>
                                 <h4 className="text-white text-sm font-medium">{inv.asset?.title || 'Unknown Asset'}</h4>
-                                <p className="text-xs text-slate-500">{new Date(inv.createdAt).toLocaleDateString()}</p>
+                                <div className="flex gap-2 text-xs">
+                                    <span className="text-slate-500">{new Date(inv.createdAt).toLocaleDateString()}</span>
+                                    <span className={`px-1.5 rounded-sm font-bold uppercase ${inv.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>{inv.status}</span>
+                                </div>
                             </div>
                          </div>
-                         <div className="text-right">
-                             <p className="text-white text-sm font-bold">${inv.amount.toLocaleString()}</p>
-                             <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded">{inv.status}</span>
+                         
+                         <div className="flex items-center gap-6 justify-between md:justify-end w-full md:w-auto">
+                             <div className="text-right">
+                                 <p className="text-white text-sm font-bold">${inv.amount.toLocaleString()}</p>
+                                 <p className="text-xs text-emerald-400">+4.8% Gain</p>
+                             </div>
+                             
+                             {inv.status === 'ACTIVE' && (
+                                 <button 
+                                    onClick={() => setSelectedAsset(inv)}
+                                    className="bg-navy-700 hover:bg-navy-600 text-white px-3 py-1.5 rounded text-xs font-medium border border-white/10 flex items-center gap-1"
+                                 >
+                                     <RefreshCw size={12} /> Trade
+                                 </button>
+                             )}
                          </div>
                       </div>
                     ))}
-                    <Link to="/statements" className="block text-center text-xs text-gold-500 hover:text-white mt-6 uppercase tracking-wider font-bold">View Full History</Link>
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-slate-500 text-sm">No activity recorded.</div>
+                  <div className="text-center py-12 text-slate-500 text-sm">
+                      No assets found. 
+                      <Link to="/investments" className="text-gold-500 hover:text-white ml-1">Start Investing</Link>
+                  </div>
                 )}
              </div>
           </div>
@@ -453,6 +476,18 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {selectedAsset && (
+          <TradeModal 
+            asset={selectedAsset} 
+            currentValue={selectedAsset.amount * 1.048} // Mock value calc
+            onClose={() => setSelectedAsset(null)}
+            onSuccess={() => {
+                fetchDashboardData();
+                // Show notification here
+            }}
+          />
+      )}
     </div>
   );
 };

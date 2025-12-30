@@ -1,5 +1,7 @@
+
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { BlogPost, FaqItem } from '../types';
 
 const blogPosts: BlogPost[] = [
@@ -72,18 +74,18 @@ const Resources: React.FC = () => {
         <h2 className="font-serif text-3xl text-white mb-8">Latest Insights</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
           {blogPosts.map((post) => (
-            <div key={post.id} className="bg-navy-800 rounded-lg overflow-hidden border border-white/5 group hover:border-gold-500/30 transition-all">
+            <div key={post.id} className="bg-navy-800 rounded-lg overflow-hidden border border-white/5 group hover:border-gold-500/30 transition-all flex flex-col">
               <div className="h-48 overflow-hidden">
                 <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               </div>
-              <div className="p-6">
+              <div className="p-6 flex flex-col flex-grow">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs text-gold-500 uppercase font-bold">{post.category}</span>
                   <span className="text-xs text-slate-500">{post.date}</span>
                 </div>
                 <h3 className="text-xl font-serif text-white mb-3 group-hover:text-gold-400 transition-colors">{post.title}</h3>
                 <p className="text-slate-400 text-sm mb-4 line-clamp-3">{post.excerpt}</p>
-                <a href="#" className="text-gold-500 text-sm font-medium hover:underline">Read Article</a>
+                <Link to={`/resources/${post.id}`} className="mt-auto text-gold-500 text-sm font-medium hover:underline inline-block">Read Article</Link>
               </div>
             </div>
           ))}

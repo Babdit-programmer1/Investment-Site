@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Users, Briefcase, DollarSign, Activity, CheckCircle, XCircle, Plus, Shield, Lock, Server, Key, AlertTriangle, FileText, Scale, Siren, Cpu, Gauge, Globe } from 'lucide-react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../src/config';
 
 // MOCK DATA
@@ -31,6 +31,7 @@ const MOCK_APPROVALS = [
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'assets' | 'investors' | 'approvals' | 'treasury' | 'risk' | 'performance'>('overview');
   const [stats, setStats] = useState<any>(null);
   const [investors, setInvestors] = useState<any[]>([]);
@@ -545,7 +546,10 @@ const AdminDashboard: React.FC = () => {
              <Briefcase className="mx-auto h-12 w-12 text-slate-500 mb-4" />
              <h3 className="text-lg font-medium text-white">Asset Management</h3>
              <p className="text-slate-400 mb-6">Manage real estate, art, and collectibles inventory.</p>
-             <button className="bg-gold-600 hover:bg-gold-500 text-white px-4 py-2 rounded flex items-center mx-auto">
+             <button 
+                onClick={() => navigate('/admin/assets/new')}
+                className="bg-gold-600 hover:bg-gold-500 text-white px-4 py-2 rounded flex items-center mx-auto transition-colors"
+             >
                <Plus className="w-4 h-4 mr-2" /> Add New Asset
              </button>
            </div>

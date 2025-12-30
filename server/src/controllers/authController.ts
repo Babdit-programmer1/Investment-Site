@@ -1,3 +1,4 @@
+
 import { Request, Response } from 'express';
 // @ts-ignore
 import { PrismaClient } from '@prisma/client';
@@ -56,6 +57,18 @@ export const register = async (req: any, res: any) => {
         data: { userId: user.id }
       });
 
+      // Welcome Notification
+      if (tx.notification) {
+        await tx.notification.create({
+          data: {
+            userId: user.id,
+            title: 'Welcome to Prestige Assets',
+            message: 'Your account has been created. Please complete your KYC verification.',
+            type: 'INFO'
+          }
+        });
+      }
+
       return user;
     });
 
@@ -113,5 +126,84 @@ export const login = async (req: any, res: any) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+export const updateProfile = async (req: any, res: any) => {
+  const userId = req.user.id;
+  const { fullName, phone, emailAlerts, pushAlerts, twoFactor } = req.body;
+
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const currentProfile = user.profileData ? JSON.parse(user.profileData) : {};
+    
+    // Merge new preferences into profileData JSON
+    const newProfileData = {
+      ...currentProfile,
+      phone,
+      emailAlerts,
+      pushAlerts,
+      twoFactor
+    };
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        fullName,
+        profileData: JSON.stringify(newProfileData)
+      }
+    });
+
+    const userProfile = {
+      ...updated,
+      interests: JSON.parse(updated.interests || '[]'),
+      profileData: newProfileData
+    };
+    delete (userProfile as any).passwordHash;
+
+    res.json(userProfile);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to update profile' });
+  }
+};
+
+export const updatePassword = async (req: any, res: any) => {
+  const userId = req.user.id;
+  const { currentPassword, newPassword } = req.body;
+
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) return res.status(400).json({ message: 'Incorrect current password' });
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash }
+    });
+
+    // Send notification
+    if (prisma.notification) {
+        // @ts-ignore
+        await prisma.notification.create({
+            data: {
+                userId,
+                title: 'Security Alert',
+                message: 'Your password was changed successfully.',
+                type: 'WARNING'
+            }
+        });
+    }
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating password' });
   }
 };

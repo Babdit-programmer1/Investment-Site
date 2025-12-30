@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Investment } from '../types';
-import { TrendingUp, ChevronRight, Search, SlidersHorizontal, Shield, Globe, Cpu, Leaf, Music, Car, ArrowUpRight, Zap, Loader2 } from 'lucide-react';
-import InvestModal from '../components/InvestModal';
+import { TrendingUp, ChevronRight, Search, SlidersHorizontal, Shield, Globe, Cpu, Leaf, Music, Car, ArrowUpRight, Zap, Loader2, ArrowUpDown } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useGlobal } from '../context/GlobalContext';
 import { API_BASE_URL } from '../src/config';
@@ -129,12 +129,13 @@ const Investments: React.FC = () => {
   const [filter, setFilter] = useState('All');
   const [riskFilter, setRiskFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortOption, setSortOption] = useState('RECOMMENDED');
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
   
   const { user } = useAuth();
   const { convertPrice } = useGlobal();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const loadData = async () => {
@@ -158,20 +159,27 @@ const Investments: React.FC = () => {
   const risks = ['All', 'Low', 'Medium', 'High'];
 
   const filteredInvestments = useMemo(() => {
-    return investments.filter(item => {
+    let result = investments.filter(item => {
       const categoryMatch = filter === 'All' || item.category === filter;
       const riskMatch = riskFilter === 'All' || item.riskLevel === riskFilter;
       const searchMatch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) || item.ticker.toLowerCase().includes(searchQuery.toLowerCase());
       return categoryMatch && riskMatch && searchMatch;
     });
-  }, [investments, filter, riskFilter, searchQuery]);
+
+    // Sorting Logic
+    if (sortOption === 'PRICE_LOW_HIGH') {
+        result.sort((a, b) => a.minInvestment - b.minInvestment);
+    } else if (sortOption === 'PRICE_HIGH_LOW') {
+        result.sort((a, b) => b.minInvestment - a.minInvestment);
+    } else if (sortOption === 'ROI_HIGH_LOW') {
+        result.sort((a, b) => parseFloat(b.returnRate) - parseFloat(a.returnRate));
+    }
+
+    return result;
+  }, [investments, filter, riskFilter, searchQuery, sortOption]);
 
   const handleInvestClick = (inv: Investment) => {
-    if (!user) {
-      window.location.href = '#/login';
-      return;
-    }
-    setSelectedInvestment(inv);
+    navigate(`/investments/${inv.id}`);
   };
 
   return (
@@ -195,10 +203,10 @@ const Investments: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Filter Controls */}
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-12">
+        <div className="flex flex-col xl:flex-row justify-between items-center gap-6 mb-12">
           
           {/* Categories */}
-          <div className="w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+          <div className="w-full xl:w-auto overflow-x-auto pb-2 xl:pb-0">
             <div className="flex space-x-2">
               {categories.map(cat => (
                 <button
@@ -216,7 +224,8 @@ const Investments: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto justify-end">
+             {/* Search */}
              <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 w-4 h-4" />
                 <input 
@@ -227,6 +236,8 @@ const Investments: React.FC = () => {
                   className="bg-navy-800 border border-white/10 rounded-full pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-gold-500 w-full md:w-48"
                 />
              </div>
+
+             {/* Filters */}
              <div className="flex items-center gap-2 border-l border-white/10 pl-4">
                 <SlidersHorizontal className="text-slate-500 w-4 h-4" />
                 <select 
@@ -235,6 +246,21 @@ const Investments: React.FC = () => {
                   className="bg-transparent text-sm text-slate-300 border-none outline-none cursor-pointer hover:text-white"
                 >
                    {risks.map(r => <option key={r} value={r} className="bg-navy-900">{r} Risk</option>)}
+                </select>
+             </div>
+
+             {/* Sorting */}
+             <div className="flex items-center gap-2 border-l border-white/10 pl-4">
+                <ArrowUpDown className="text-slate-500 w-4 h-4" />
+                <select 
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value)}
+                  className="bg-transparent text-sm text-slate-300 border-none outline-none cursor-pointer hover:text-white"
+                >
+                   <option value="RECOMMENDED" className="bg-navy-900">Recommended</option>
+                   <option value="PRICE_LOW_HIGH" className="bg-navy-900">Min. Invest (Low to High)</option>
+                   <option value="PRICE_HIGH_LOW" className="bg-navy-900">Min. Invest (High to Low)</option>
+                   <option value="ROI_HIGH_LOW" className="bg-navy-900">Projected ROI (High to Low)</option>
                 </select>
              </div>
           </div>
@@ -295,10 +321,6 @@ const Investments: React.FC = () => {
           </div>
         )}
       </div>
-
-      {selectedInvestment && (
-        <InvestModal investment={selectedInvestment} onClose={() => setSelectedInvestment(null)} />
-      )}
     </div>
   );
 };

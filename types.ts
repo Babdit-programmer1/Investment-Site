@@ -1,3 +1,4 @@
+
 export type Role = 'USER' | 'ADMIN';
 export type KycStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type InvestmentStatus = 'ACTIVE' | 'CLOSED' | 'UPCOMING';
@@ -70,6 +71,7 @@ export interface UserProfile {
   kycStatus: KycStatus;
   joinedDate: string;
   planId?: string;
+  profileData?: any; // Stores phone, preferences, and extended attributes
 }
 
 export interface InvestmentIntent {

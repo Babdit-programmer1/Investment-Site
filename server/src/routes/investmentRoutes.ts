@@ -1,6 +1,7 @@
+
 import express from 'express';
 import { authenticateToken } from '../middleware/authMiddleware';
-import { getAllInvestments, getInvestmentById } from '../controllers/investmentController';
+import { getAllInvestments, getInvestmentById, sellAsset } from '../controllers/investmentController';
 
 const router = express.Router();
 
@@ -12,5 +13,7 @@ router.get('/:id', getInvestmentById);
 router.post('/invest', authenticateToken, (req, res) => {
   res.json({ message: "Investment processed successfully" });
 });
+
+router.post('/sell', authenticateToken, sellAsset);
 
 export default router;
