@@ -72,10 +72,10 @@ app.get('/health', (req, res) => {
 // Metrics Endpoint (Protected in real world, public for demo)
 app.get('/metrics', (req, res) => {
   res.json({
-    uptime: process.uptime(),
+    uptime: (process as any).uptime(),
     ...metrics,
     errorRate: metrics.requests > 0 ? (metrics.errors / metrics.requests).toFixed(4) : 0,
-    memoryUsage: process.memoryUsage()
+    memoryUsage: (process as any).memoryUsage()
   });
 });
 

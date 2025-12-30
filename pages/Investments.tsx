@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Investment } from '../types';
-import { TrendingUp, ChevronRight, Search, SlidersHorizontal, Shield, Globe, Cpu, Leaf, Music, Car, ArrowUpRight, Zap } from 'lucide-react';
+import { TrendingUp, ChevronRight, Search, SlidersHorizontal, Shield, Globe, Cpu, Leaf, Music, Car, ArrowUpRight, Zap, Loader2 } from 'lucide-react';
 import InvestModal from '../components/InvestModal';
 import { useAuth } from '../context/AuthContext';
 import { useGlobal } from '../context/GlobalContext';
 import { API_BASE_URL } from '../src/config';
 
-// Expanded Mock Data for Preview (Same as before but showing usage of dynamic price display below)
+// Mock Data for Preview / Fallback
 const MOCK_INVESTMENTS: Investment[] = [
   {
     id: '1',
@@ -26,7 +26,57 @@ const MOCK_INVESTMENTS: Investment[] = [
     imageUrl: 'https://images.unsplash.com/photo-1600596542815-e328701102b9?q=80&w=1600',
     scenarios: { conservative: 8, moderate: 14.5, aggressive: 22 }
   },
-  // ... (Other mock items remain the same, just rendering logic changes below)
+  {
+    id: '2',
+    ticker: 'ART-WAR-067',
+    title: 'Warhol "Marilyn" Series',
+    category: 'Fine Art',
+    fundStrategy: 'Capital Appreciation',
+    description: 'Blue-chip pop art asset. Warhol market index has outperformed S&P 500 by 120% over the last 15 years.',
+    price: '$100,000',
+    minInvestment: 100000,
+    returnRate: '18.2%',
+    targetIrp: 18.2,
+    term: '5-7 Years',
+    riskLevel: 'Medium',
+    status: 'ACTIVE',
+    imageUrl: 'https://images.unsplash.com/photo-1561214115-f2f134cc4912?q=80&w=1600',
+    scenarios: { conservative: 5, moderate: 18.2, aggressive: 35 }
+  },
+  {
+    id: '3',
+    ticker: 'ALT-FER-250',
+    title: '1962 Ferrari 250 GTO',
+    category: 'Luxury Vehicles',
+    fundStrategy: 'Aggressive Growth',
+    description: 'The "Holy Grail" of automotive investing. 1 of 36. Historical CAGR of 15% over the last 30 years.',
+    price: '$500,000',
+    minInvestment: 500000,
+    returnRate: '24.0%',
+    targetIrp: 24.0,
+    term: '5-10 Years',
+    riskLevel: 'High',
+    status: 'ACTIVE',
+    imageUrl: 'https://images.unsplash.com/photo-1583121274602-3e2820c698d2?q=80&w=1600',
+    scenarios: { conservative: -5, moderate: 24, aggressive: 45 }
+  },
+  {
+    id: '4',
+    ticker: 'SPC-ORB-001',
+    title: 'Low-Earth Orbit Network',
+    category: 'Space Infra',
+    fundStrategy: 'Infrastructure Growth',
+    description: 'Equity stake in a constellation of 50 nanosatellites providing global maritime data coverage.',
+    price: '$25,000',
+    minInvestment: 25000,
+    returnRate: '21.5%',
+    targetIrp: 21.5,
+    term: '7 Years',
+    riskLevel: 'High',
+    status: 'ACTIVE',
+    imageUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1600',
+    scenarios: { conservative: -10, moderate: 21.5, aggressive: 55 }
+  }
 ];
 
 const GrowthChart: React.FC<{ scenarios: { conservative: number, moderate: number, aggressive: number }, color?: string }> = ({ scenarios, color = "#fbbf24" }) => {
@@ -40,7 +90,7 @@ const GrowthChart: React.FC<{ scenarios: { conservative: number, moderate: numbe
     <div className="relative h-12 w-full">
       <svg width="100%" height="100%" viewBox="0 0 100 40" preserveAspectRatio="none" className="overflow-visible">
         <defs>
-          <linearGradient id={`grad-${color}`} x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={`grad-${color}`} x1="0" x2="0" y1="0" y2="1">
              <stop offset="0%" stopColor={color} stopOpacity="0.2"/>
              <stop offset="100%" stopColor={color} stopOpacity="0"/>
           </linearGradient>
@@ -88,12 +138,14 @@ const Investments: React.FC = () => {
 
   useEffect(() => {
     const loadData = async () => {
+      setLoading(true);
       try {
         const res = await fetch(`${API_BASE_URL}/investments`);
         if (!res.ok) throw new Error('Failed to fetch');
         const data = await res.json();
         setInvestments(data.length > 0 ? data : MOCK_INVESTMENTS);
       } catch (err) {
+        console.warn('API unavailable, using mock data');
         setInvestments(MOCK_INVESTMENTS);
       } finally {
         setLoading(false);
@@ -142,56 +194,106 @@ const Investments: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Filters ... (Same as before) */}
+        {/* Filter Controls */}
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-12">
+          
+          {/* Categories */}
+          <div className="w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+            <div className="flex space-x-2">
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setFilter(cat)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                    filter === cat 
+                      ? 'bg-gold-600 text-white' 
+                      : 'bg-navy-800 text-slate-400 hover:text-white border border-white/5'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 w-full md:w-auto">
+             <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 w-4 h-4" />
+                <input 
+                  type="text" 
+                  placeholder="Search assets..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="bg-navy-800 border border-white/10 rounded-full pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-gold-500 w-full md:w-48"
+                />
+             </div>
+             <div className="flex items-center gap-2 border-l border-white/10 pl-4">
+                <SlidersHorizontal className="text-slate-500 w-4 h-4" />
+                <select 
+                  value={riskFilter}
+                  onChange={(e) => setRiskFilter(e.target.value)}
+                  className="bg-transparent text-sm text-slate-300 border-none outline-none cursor-pointer hover:text-white"
+                >
+                   {risks.map(r => <option key={r} value={r} className="bg-navy-900">{r} Risk</option>)}
+                </select>
+             </div>
+          </div>
+        </div>
         
         {/* Investments Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12">
-          {filteredInvestments.map((inv) => (
-            <div key={inv.id} className="group relative bg-navy-800 rounded-lg overflow-hidden border border-white/5 hover:border-gold-500/30 hover:shadow-2xl hover:shadow-gold-900/10 transition-all duration-500 flex flex-col h-full">
-              
-              <div className="relative h-56 overflow-hidden">
-                <img src={inv.imageUrl} alt={inv.title} className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" />
-                <div className="absolute inset-0 bg-gradient-to-t from-navy-900 via-transparent to-transparent opacity-90"></div>
-                <div className="absolute top-4 left-4"><CategoryBadge category={inv.category} /></div>
-                <div className="absolute bottom-4 left-4 right-4">
-                   <h3 className="text-xl font-serif text-white leading-tight mb-1 truncate">{inv.title}</h3>
-                   <div className="flex items-center gap-2 text-xs text-slate-300">
-                      <span className="flex items-center gap-1"><TrendingUp size={12} className="text-gold-500"/> {inv.fundStrategy}</span>
-                   </div>
-                </div>
-              </div>
-
-              <div className="p-6 flex flex-col flex-grow">
-                <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-white/5">
-                   <div>
-                      <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Target ROI</p>
-                      <p className="text-2xl font-serif text-emerald-400">{inv.returnRate}</p>
-                   </div>
-                   <div className="text-right">
-                      <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Min. Entry</p>
-                      {/* DYNAMIC CURRENCY DISPLAY */}
-                      <p className="text-lg font-medium text-white">{convertPrice(inv.minInvestment)}</p>
-                   </div>
-                </div>
-
-                <div className="mb-6 relative h-12">
-                   <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1 absolute -top-4 left-0">Projected Growth</p>
-                   <GrowthChart scenarios={inv.scenarios} color={inv.riskLevel === 'High' ? '#fbbf24' : inv.riskLevel === 'Medium' ? '#34d399' : '#60a5fa'} />
-                </div>
+        {loading ? (
+          <div className="flex justify-center items-center py-32">
+            <Loader2 className="w-12 h-12 text-gold-500 animate-spin" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredInvestments.map((inv) => (
+              <div key={inv.id} className="group relative bg-navy-800 rounded-lg overflow-hidden border border-white/5 hover:border-gold-500/30 hover:shadow-2xl hover:shadow-gold-900/10 transition-all duration-500 flex flex-col h-full">
                 
-                <div className="flex items-center justify-between mt-auto pt-4">
-                   <div className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide border ${inv.riskLevel === 'Low' ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : inv.riskLevel === 'Medium' ? 'border-blue-500/30 text-blue-400 bg-blue-500/10' : 'border-amber-500/30 text-amber-500 bg-amber-500/10'}`}>
-                      {inv.riskLevel} Risk
-                   </div>
-                   <button onClick={() => handleInvestClick(inv)} className="text-xs font-bold text-white bg-gold-600 hover:bg-gold-500 px-4 py-2 rounded-sm transition-colors uppercase tracking-wider flex items-center group-hover:pr-3">
-                      View Opportunity <ChevronRight size={14} className="ml-1 transform group-hover:translate-x-1 transition-transform" />
-                   </button>
+                <div className="relative h-56 overflow-hidden">
+                  <img src={inv.imageUrl} alt={inv.title} className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-navy-900 via-transparent to-transparent opacity-90"></div>
+                  <div className="absolute top-4 left-4"><CategoryBadge category={inv.category} /></div>
+                  <div className="absolute bottom-4 left-4 right-4">
+                    <h3 className="text-xl font-serif text-white leading-tight mb-1 truncate">{inv.title}</h3>
+                    <div className="flex items-center gap-2 text-xs text-slate-300">
+                        <span className="flex items-center gap-1"><TrendingUp size={12} className="text-gold-500"/> {inv.fundStrategy}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-            </div>
-          ))}
-        </div>
+                <div className="p-6 flex flex-col flex-grow">
+                  <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-white/5">
+                    <div>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Target ROI</p>
+                        <p className="text-2xl font-serif text-emerald-400">{inv.returnRate}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Min. Entry</p>
+                        {/* DYNAMIC CURRENCY DISPLAY */}
+                        <p className="text-lg font-medium text-white">{convertPrice(inv.minInvestment)}</p>
+                    </div>
+                  </div>
+
+                  <div className="mb-6 relative h-12">
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1 absolute -top-4 left-0">Projected Growth</p>
+                    <GrowthChart scenarios={inv.scenarios} color={inv.riskLevel === 'High' ? '#fbbf24' : inv.riskLevel === 'Medium' ? '#34d399' : '#60a5fa'} />
+                  </div>
+                  
+                  <div className="flex items-center justify-between mt-auto pt-4">
+                    <div className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide border ${inv.riskLevel === 'Low' ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : inv.riskLevel === 'Medium' ? 'border-blue-500/30 text-blue-400 bg-blue-500/10' : 'border-amber-500/30 text-amber-500 bg-amber-500/10'}`}>
+                        {inv.riskLevel} Risk
+                    </div>
+                    <button onClick={() => handleInvestClick(inv)} className="text-xs font-bold text-white bg-gold-600 hover:bg-gold-500 px-4 py-2 rounded-sm transition-colors uppercase tracking-wider flex items-center group-hover:pr-3">
+                        View Opportunity <ChevronRight size={14} className="ml-1 transform group-hover:translate-x-1 transition-transform" />
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {selectedInvestment && (
