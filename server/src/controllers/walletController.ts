@@ -1,3 +1,4 @@
+
 import { Request, Response } from 'express';
 // @ts-ignore
 import { PrismaClient } from '@prisma/client';
@@ -6,6 +7,7 @@ import { ledgerService } from '../services/ledgerService';
 import { custodyService } from '../services/custodyService';
 import { complianceService } from '../services/complianceService';
 import { riskEngine } from '../services/riskEngine';
+import { Money } from '../utils/money';
 
 const prisma = new PrismaClient();
 
@@ -20,7 +22,6 @@ export const getWallet = async (req: any, res: any) => {
       }
     });
 
-    // Create if missing (migration for existing users)
     if (!wallet) {
       wallet = await prisma.wallet.create({
         data: { userId },
@@ -39,9 +40,12 @@ export const deposit = async (req: any, res: any) => {
   const userId = req.user?.id;
   const { amount, currency, type } = req.body; // type = 'FIAT' or 'CRYPTO'
 
+  // Input sanitization: Convert input to Decimal immediately
+  const depositAmount = Money.from(amount);
+
   try {
-    // 1. AI Risk Engine Analysis
-    const riskAnalysis = await riskEngine.analyzeTransaction(userId, 'DEPOSIT', amount, { currency, type });
+    // 1. AI Risk Engine Analysis (Convert back to number for legacy risk scoring)
+    const riskAnalysis = await riskEngine.analyzeTransaction(userId, 'DEPOSIT', Money.toNumber(depositAmount), { currency, type });
     
     if (riskAnalysis.action === 'BLOCK') {
         return res.status(403).json({ 
@@ -50,19 +54,15 @@ export const deposit = async (req: any, res: any) => {
         });
     }
 
-    // 2. AML Compliance (Legacy check, usually covered by Risk Engine now, but kept for double safety)
-    const amlCheck = await complianceService.checkAml(userId, amount, 'DEPOSIT');
+    // 2. AML Compliance
+    const amlCheck = await complianceService.checkAml(userId, Money.toNumber(depositAmount), 'DEPOSIT');
     
-    // Determine Status based on Risk & AML
     let status = 'COMPLETED';
     let warningMsg = undefined;
 
     if (riskAnalysis.action === 'REVIEW' || amlCheck.flagged) {
         status = 'PENDING_APPROVAL';
         warningMsg = 'Transaction queued for manual compliance review.';
-        // In a real app, we might not credit the wallet yet. 
-        // For this hybrid preview, we might credit but lock withdrawals, or hold it pending.
-        // Let's hold it pending (no balance update).
     }
 
     const wallet = await prisma.wallet.findUnique({ where: { userId } });
@@ -70,14 +70,16 @@ export const deposit = async (req: any, res: any) => {
 
     await prisma.$transaction(async (tx: any) => {
       const ref = `DEP-${randomUUID().substring(0, 8).toUpperCase()}`;
-      const balanceBefore = wallet.fiatBalance;
+      
+      // Capture current balance as Decimal
+      const balanceBefore = Money.from(wallet.fiatBalance);
       let balanceAfter = balanceBefore;
 
       if (status === 'COMPLETED') {
           if (type === 'FIAT') {
             const updatedWallet = await tx.wallet.update({
               where: { id: wallet.id },
-              data: { fiatBalance: { increment: amount } }
+              data: { fiatBalance: { increment: depositAmount } } // Prisma handles Decimal atomic increment
             });
             balanceAfter = updatedWallet.fiatBalance;
           } else {
@@ -88,22 +90,21 @@ export const deposit = async (req: any, res: any) => {
             if (existingCrypto) {
                 await tx.cryptoBalance.update({
                     where: { id: existingCrypto.id },
-                    data: { balance: { increment: amount } }
+                    data: { balance: { increment: depositAmount } }
                 });
             } else {
                 await tx.cryptoBalance.create({
-                    data: { walletId: wallet.id, asset: currency, balance: amount }
+                    data: { walletId: wallet.id, asset: currency, balance: depositAmount }
                 });
             }
           }
       }
 
-      // Unified Ledger Log
       await ledgerService.recordEntry(tx, {
         userId,
         walletId: wallet.id,
         actionType: 'DEPOSIT',
-        amount,
+        amount: depositAmount,
         currency,
         referenceId: ref,
         source: 'PAYMENT',
@@ -128,10 +129,11 @@ export const deposit = async (req: any, res: any) => {
 export const withdraw = async (req: any, res: any) => {
   const userId = req.user?.id;
   const { amount, currency = 'USD' } = req.body;
+  
+  const withdrawAmount = Money.from(amount);
 
   try {
-    // 1. AI Risk Engine Analysis
-    const riskAnalysis = await riskEngine.analyzeTransaction(userId, 'WITHDRAWAL', amount, { currency });
+    const riskAnalysis = await riskEngine.analyzeTransaction(userId, 'WITHDRAWAL', Money.toNumber(withdrawAmount), { currency });
 
     if (riskAnalysis.action === 'BLOCK') {
         return res.status(403).json({ 
@@ -141,17 +143,14 @@ export const withdraw = async (req: any, res: any) => {
     }
 
     if (riskAnalysis.action === 'REVIEW') {
-         // Create a pending ledger entry but do not process via custody yet
-         // Or tell custody to hold it. 
-         // For simplicity, we return pending state to UI.
          return res.json({ 
              status: 'PENDING_APPROVAL', 
              message: 'Withdrawal flagged for manual review due to risk score.' 
          });
     }
 
-    // 2. Custody Service (Hot/Warm/Cold logic)
-    const result = await custodyService.requestWithdrawal(userId, amount, currency);
+    // 2. Custody Service
+    const result = await custodyService.requestWithdrawal(userId, withdrawAmount, currency);
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ message: error.message || 'Withdrawal failed' });

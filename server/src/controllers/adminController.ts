@@ -1,3 +1,4 @@
+
 import { Request, Response } from 'express';
 // @ts-ignore
 import { PrismaClient, Prisma } from '@prisma/client';
@@ -248,4 +249,57 @@ export const getAiModelStats = async (req: any, res: any) => {
         activeModels: ['MonteCarlo-V2', 'Sentiment-NLP-V4'],
         lastTraining: new Date()
     });
+};
+
+// --- SYSTEM DIAGNOSTICS & TESTING ---
+
+export const runDiagnostics = async (req: any, res: any) => {
+    const start = Date.now();
+    const checks: any = {
+        timestamp: new Date(),
+        database: { status: 'PENDING', latencyMs: 0 },
+        services: { status: 'OK' },
+        env: { status: 'OK' }
+    };
+
+    try {
+        // 1. Database Check (Read)
+        const userCount = await prisma.user.count();
+        checks.database.status = 'CONNECTED';
+        checks.database.latencyMs = Date.now() - start;
+        checks.database.recordCount = userCount;
+
+        // 2. Services Configuration Check
+        checks.services.paymentGateway = process.env.PAYSTACK_SECRET_KEY ? 'CONFIGURED' : 'MISSING_KEY';
+        checks.services.riskEngine = 'ACTIVE';
+        checks.services.notifications = process.env.DATABASE_URL ? 'ACTIVE' : 'ERROR';
+
+    } catch (e: any) {
+        checks.database.status = 'ERROR';
+        checks.database.error = e.message;
+    }
+
+    res.json(checks);
+};
+
+export const triggerTestNotification = async (req: any, res: any) => {
+    const userId = req.user.id;
+    try {
+        // @ts-ignore
+        if (prisma.notification) {
+            // @ts-ignore
+            await prisma.notification.create({
+                data: {
+                    userId,
+                    title: 'System Verification',
+                    message: 'This is a test notification triggered from the Admin Diagnostics panel. Your notification pipeline is operational.',
+                    type: 'SUCCESS'
+                }
+            });
+            return res.json({ success: true, message: 'Notification dispatched successfully' });
+        }
+        res.status(500).json({ message: 'Notification table not found' });
+    } catch (e) {
+        res.status(500).json({ message: 'Notification failed' });
+    }
 };

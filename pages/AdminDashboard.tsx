@@ -1,7 +1,6 @@
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Users, Briefcase, DollarSign, Activity, CheckCircle, XCircle, Plus, Shield, Lock, Server, Key, AlertTriangle, FileText, Scale, Siren, Cpu, Gauge, Globe } from 'lucide-react';
+import { Users, Briefcase, DollarSign, Activity, CheckCircle, XCircle, Plus, Shield, Lock, Server, Key, AlertTriangle, FileText, Scale, Siren, Cpu, Gauge, Globe, Terminal, Bell } from 'lucide-react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../src/config';
 
@@ -32,7 +31,7 @@ const MOCK_APPROVALS = [
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'assets' | 'investors' | 'approvals' | 'treasury' | 'risk' | 'performance'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'assets' | 'investors' | 'approvals' | 'treasury' | 'risk' | 'performance' | 'diagnostics'>('overview');
   const [stats, setStats] = useState<any>(null);
   const [investors, setInvestors] = useState<any[]>([]);
   const [approvals, setApprovals] = useState<any[]>([]);
@@ -41,6 +40,12 @@ const AdminDashboard: React.FC = () => {
   const [alerts, setAlerts] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<any>(null);
   const [metrics, setMetrics] = useState<any>(null);
+  
+  // Diagnostics State
+  const [diagResults, setDiagResults] = useState<any>(null);
+  const [runningDiag, setRunningDiag] = useState(false);
+  const [notifStatus, setNotifStatus] = useState('');
+
   const [token] = useState(localStorage.getItem('prestige_token'));
 
   // Redirect if not admin
@@ -123,6 +128,35 @@ const AdminDashboard: React.FC = () => {
       }
   };
 
+  const runSystemDiagnostics = async () => {
+      setRunningDiag(true);
+      setDiagResults(null);
+      try {
+          const res = await fetch(`${API_BASE_URL}/admin/diagnostics/run`, { headers: { Authorization: `Bearer ${token}` } });
+          const data = await res.json();
+          setTimeout(() => setDiagResults(data), 800); // Small delay for UX
+      } catch (e) {
+          setDiagResults({ error: 'Failed to execute diagnostics suite.' });
+      } finally {
+          setTimeout(() => setRunningDiag(false), 800);
+      }
+  };
+
+  const sendTestNotification = async () => {
+      setNotifStatus('Sending...');
+      try {
+          const res = await fetch(`${API_BASE_URL}/admin/diagnostics/notify`, { 
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` } 
+          });
+          if (res.ok) setNotifStatus('Sent successfully!');
+          else setNotifStatus('Failed to send.');
+      } catch (e) {
+          setNotifStatus('Network error.');
+      }
+      setTimeout(() => setNotifStatus(''), 3000);
+  };
+
   const verifyUser = async (id: string) => {
     try {
       await fetch(`${API_BASE_URL}/admin/investors/${id}/verify`, {
@@ -182,7 +216,7 @@ const AdminDashboard: React.FC = () => {
 
         {/* Tabs */}
         <div className="flex space-x-4 mb-8 border-b border-white/10 overflow-x-auto">
-          {['overview', 'assets', 'investors', 'approvals', 'treasury', 'risk', 'performance'].map(tab => (
+          {['overview', 'assets', 'investors', 'approvals', 'treasury', 'risk', 'performance', 'diagnostics'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
@@ -227,6 +261,48 @@ const AdminDashboard: React.FC = () => {
               </div>
             ))}
           </div>
+        )}
+
+        {/* Diagnostics Tab */}
+        {activeTab === 'diagnostics' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="bg-navy-800 border border-white/5 rounded-lg p-6">
+                    <h3 className="text-white font-medium mb-4 flex items-center gap-2"><Terminal size={18} className="text-gold-500" /> System Health Check</h3>
+                    <p className="text-sm text-slate-400 mb-6">Executes a deep scan of the database connection, API latency, and environment configuration.</p>
+                    
+                    <button 
+                        onClick={runSystemDiagnostics} 
+                        disabled={runningDiag}
+                        className="bg-gold-600 hover:bg-gold-500 text-white px-6 py-2 rounded text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+                    >
+                        {runningDiag ? 'Running Diagnostics...' : 'Run System Check'}
+                    </button>
+
+                    {diagResults && (
+                        <div className="mt-6 bg-navy-950 p-4 rounded border border-white/10 font-mono text-xs text-slate-300">
+                            <pre>{JSON.stringify(diagResults, null, 2)}</pre>
+                        </div>
+                    )}
+                </div>
+
+                <div className="bg-navy-800 border border-white/5 rounded-lg p-6">
+                    <h3 className="text-white font-medium mb-4 flex items-center gap-2"><Bell size={18} className="text-gold-500" /> Notification Pipeline</h3>
+                    <p className="text-sm text-slate-400 mb-6">Triggers a test notification to verify the real-time alert system (DB Write + Client Fetch).</p>
+                    
+                    <button 
+                        onClick={sendTestNotification}
+                        className="bg-navy-700 hover:bg-navy-600 border border-white/10 text-white px-6 py-2 rounded text-sm font-medium flex items-center gap-2"
+                    >
+                        Trigger Test Alert
+                    </button>
+                    
+                    {notifStatus && (
+                        <p className={`mt-4 text-sm font-medium ${notifStatus.includes('success') ? 'text-emerald-400' : 'text-slate-400'}`}>
+                            {notifStatus}
+                        </p>
+                    )}
+                </div>
+            </div>
         )}
 
         {activeTab === 'performance' && metrics && (

@@ -1,3 +1,4 @@
+
 import express from 'express';
 import { authenticateToken, requireAdmin } from '../middleware/authMiddleware';
 import { 
@@ -13,7 +14,9 @@ import {
   getMultisigRequests,
   approveMultisig,
   getComplianceAlerts,
-  getAuditLogs
+  getAuditLogs,
+  runDiagnostics,
+  triggerTestNotification
 } from '../controllers/adminController';
 
 const router = express.Router();
@@ -43,5 +46,9 @@ router.post('/multisig/:referenceId/approve', approveMultisig);
 // Compliance & Audit
 router.get('/compliance/alerts', getComplianceAlerts);
 router.get('/compliance/audit', getAuditLogs);
+
+// System Diagnostics (New)
+router.get('/diagnostics/run', runDiagnostics);
+router.post('/diagnostics/notify', triggerTestNotification);
 
 export default router;

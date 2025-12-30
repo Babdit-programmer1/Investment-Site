@@ -1,3 +1,4 @@
+
 import { Request, Response } from 'express';
 // @ts-ignore
 import { PrismaClient, Prisma } from '@prisma/client';
@@ -5,6 +6,7 @@ import { paymentService } from '../services/paymentService';
 import { randomUUID } from 'crypto';
 import { ledgerService } from '../services/ledgerService';
 import { riskEngine } from '../services/riskEngine';
+import { Money } from '../utils/money';
 
 const prisma = new PrismaClient();
 
@@ -21,62 +23,61 @@ interface VerifyPaymentBody {
 export const initiateInvestment = async (req: any, res: any) => {
   const userId = req.user?.id;
   const { assetId, amount, gateway = 'PAYSTACK' } = req.body as InitiateInvestmentBody;
+  
+  // Safe Decimal Conversion
+  const investAmount = Money.from(amount);
 
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // Risk Check
-    const riskAnalysis = await riskEngine.analyzeTransaction(userId, 'INVESTMENT', amount, { assetId, gateway });
+    const riskAnalysis = await riskEngine.analyzeTransaction(userId, 'INVESTMENT', Money.toNumber(investAmount), { assetId, gateway });
     if (riskAnalysis.action === 'BLOCK') {
         return res.status(403).json({ message: 'Investment blocked by risk engine.', reasons: riskAnalysis.reasons });
     }
 
-    // Validate Asset
     const asset = await prisma.investment.findUnique({ where: { id: assetId } });
     if (!asset) return res.status(404).json({ message: 'Asset not found' });
-    if (amount < asset.minInvestment) {
-      return res.status(400).json({ message: `Minimum investment is $${asset.minInvestment.toLocaleString()}` });
+    
+    // Decimal Comparison
+    if (investAmount.lessThan(asset.minInvestment)) {
+      return res.status(400).json({ message: `Minimum investment is $${Money.toNumber(asset.minInvestment).toLocaleString()}` });
     }
 
-    // Handle Wallet Payment
     if (gateway === 'WALLET') {
         const wallet = await prisma.wallet.findUnique({ where: { userId } });
-        if (!wallet || wallet.fiatBalance < amount) {
+        // Decimal Comparison for Balance Check
+        if (!wallet || Money.lt(wallet.fiatBalance, investAmount)) {
             return res.status(400).json({ message: 'Insufficient wallet balance' });
         }
 
         const status = riskAnalysis.action === 'REVIEW' ? 'PENDING_APPROVAL' : 'ESCROWED';
 
-        // Atomic: Deduct balance, Create Intent (Escrowed directly), Create Ledger
         const result = await prisma.$transaction(async (tx: any) => {
-            const balanceBefore = wallet.fiatBalance;
+            const balanceBefore = Money.from(wallet.fiatBalance);
             const ref = `WAL-${randomUUID()}`;
 
-            // Deduct
             const updatedWallet = await tx.wallet.update({
                 where: { id: wallet.id },
-                data: { fiatBalance: { decrement: amount } }
+                data: { fiatBalance: { decrement: investAmount } } // Safe atomic decrement
             });
             
-            // Transaction Record (Legacy)
             await tx.walletTransaction.create({
                 data: {
                     walletId: wallet.id,
                     type: 'INVEST',
-                    amount,
+                    amount: investAmount,
                     currency: 'USD',
                     reference: `INV-${randomUUID().substring(0,8).toUpperCase()}`,
                     status: 'COMPLETED'
                 }
             });
 
-            // Create Intent
             const intent = await tx.investmentIntent.create({
                 data: {
                     userId: userId!,
                     assetId,
-                    amount,
+                    amount: investAmount,
                     currency: 'USD',
                     status: status === 'PENDING_APPROVAL' ? 'PENDING' : 'ESCROWED',
                     gateway: 'WALLET',
@@ -84,28 +85,26 @@ export const initiateInvestment = async (req: any, res: any) => {
                 }
             });
 
-            // Create Escrow Ledger (Only if approved or escrowed)
             if (status === 'ESCROWED') {
                 await tx.escrowLedger.create({
                     data: {
                         intentId: intent.id,
-                        amount: amount,
+                        amount: investAmount,
                         currency: 'USD',
                         released: false
                     }
                 });
             }
 
-            // Unified Ledger Log
             await ledgerService.recordEntry(tx, {
               userId: userId!,
               walletId: wallet.id,
               actionType: 'INVESTMENT',
-              amount,
+              amount: investAmount,
               currency: 'USD',
               referenceId: ref,
               source: 'WALLET',
-              balanceBefore,
+              balanceBefore: balanceBefore,
               balanceAfter: updatedWallet.fiatBalance,
               status: status === 'ESCROWED' ? 'COMPLETED' : 'PENDING_APPROVAL',
               metadata: { assetId, riskScore: riskAnalysis.score }
@@ -123,7 +122,6 @@ export const initiateInvestment = async (req: any, res: any) => {
             });
         }
 
-        // Redirect directly to dashboard as it is instant
         return res.json({
             intentId: result.intent.id,
             authorizationUrl: `${req.headers['origin']}/#/dashboard?status=success`,
@@ -131,13 +129,12 @@ export const initiateInvestment = async (req: any, res: any) => {
         });
     }
 
-    // Handle External Payment (Existing Logic)
     const reference = randomUUID();
     const intent = await prisma.investmentIntent.create({
       data: {
         userId: userId!,
         assetId,
-        amount,
+        amount: investAmount,
         currency: 'USD',
         status: 'PENDING',
         gateway,
@@ -145,10 +142,9 @@ export const initiateInvestment = async (req: any, res: any) => {
       }
     });
 
-    // Initiate Gateway Payment
     const paymentResponse = await paymentService.initiatePayment(gateway as any, {
       email: user.email,
-      amount: amount * 100, // Convert to minor units
+      amount: Money.toNumber(investAmount) * 100,
       currency: 'USD',
       reference,
       metadata: { intentId: intent.id, assetId, userId },
@@ -178,19 +174,15 @@ export const verifyPayment = async (req: any, res: any) => {
     if (!intent) return res.status(404).json({ message: 'Transaction not found' });
     if (intent.status !== 'PENDING') return res.json({ status: intent.status });
 
-    // Verify with gateway
     const isValid = await paymentService.verifyPayment(intent.gateway as any, reference);
 
     if (isValid) {
-      // Move to Escrow using Atomic Transaction
       await prisma.$transaction(async (tx: any) => {
-        // 1. Update Intent Status
         await tx.investmentIntent.update({
           where: { id: intent.id },
           data: { status: 'ESCROWED' }
         });
 
-        // 2. Create Escrow Ledger Entry
         await tx.escrowLedger.create({
           data: {
             intentId: intent.id,
@@ -200,12 +192,8 @@ export const verifyPayment = async (req: any, res: any) => {
           }
         });
 
-        // 3. Log External Investment Deposit (This is essentially money entering the system then going to escrow)
-        // We find the wallet for the user to link the record
         const wallet = await tx.wallet.findUnique({ where: { userId: intent.userId } });
         if (wallet) {
-           // We don't increment wallet balance because it went straight to escrow (intent), 
-           // but we log the 'INVESTMENT' action in the ledger for tracking.
            await ledgerService.recordEntry(tx, {
               userId: intent.userId,
               walletId: wallet.id,
@@ -213,9 +201,9 @@ export const verifyPayment = async (req: any, res: any) => {
               amount: intent.amount,
               currency: intent.currency,
               referenceId: reference,
-              source: 'PAYMENT', // External payment
+              source: 'PAYMENT', 
               balanceBefore: wallet.fiatBalance,
-              balanceAfter: wallet.fiatBalance, // Unchanged as it went to escrow
+              balanceAfter: wallet.fiatBalance, 
               status: 'COMPLETED',
               metadata: { assetId: intent.assetId, notes: 'External Payment to Escrow' }
            });

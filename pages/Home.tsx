@@ -1,6 +1,33 @@
 import React from 'react';
-import { ArrowRight, TrendingUp, ShieldCheck, Globe, Database, Cpu, PieChart, Layers, BarChart, Clock } from 'lucide-react';
+import { ArrowRight, TrendingUp, ShieldCheck, Globe, Database, PieChart, BarChart, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
+
+const FEATURED_ASSETS = [
+  {
+    id: '1',
+    title: 'The Kensington Estate',
+    category: 'Real Estate',
+    image: 'https://images.unsplash.com/photo-1600596542815-e328701102b9?q=80&w=1600',
+    roi: '14.5%',
+    min: '$50,000'
+  },
+  {
+    id: '2',
+    title: 'Warhol "Marilyn" Series',
+    category: 'Fine Art',
+    image: 'https://images.unsplash.com/photo-1561214115-f2f134cc4912?q=80&w=1600',
+    roi: '18.2%',
+    min: '$100,000'
+  },
+  {
+    id: '3',
+    title: '1962 Ferrari 250 GTO',
+    category: 'Luxury Vehicles',
+    image: 'https://images.unsplash.com/photo-1583121274602-3e2820c698d2?q=80&w=1600',
+    roi: '24.0%',
+    min: '$500,000'
+  }
+];
 
 const Home: React.FC = () => {
   return (
@@ -40,7 +67,7 @@ const Home: React.FC = () => {
             </span>
           </h1>
           <p className="text-slate-300 text-lg md:text-xl max-w-3xl mx-auto mb-10 font-light leading-relaxed">
-            Access million-dollar opportunities in real estate, art, and collectibles. 
+            Our mission is to democratize access to million-dollar opportunities in real estate, art, and collectibles. 
             Engineered for accreditation-level ROI, wealth preservation, and portfolio diversification.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -84,7 +111,54 @@ const Home: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Asset Classes (Data Driven) */}
+      {/* 3. Featured Investments */}
+      <div className="py-20 bg-navy-900 border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-end mb-12">
+             <div>
+                <h2 className="text-gold-500 font-mono text-xs tracking-widest uppercase mb-2">Curated Opportunities</h2>
+                <h3 className="font-serif text-3xl md:text-4xl text-white">Featured Investments</h3>
+             </div>
+             <Link to="/investments" className="hidden md:flex items-center space-x-2 text-slate-400 hover:text-white transition-colors text-sm">
+                <span>View All Assets</span>
+                <ArrowRight size={16} />
+             </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+             {FEATURED_ASSETS.map(asset => (
+                <Link key={asset.id} to={`/investments/${asset.id}`} className="group block bg-navy-800 rounded-sm overflow-hidden border border-white/5 hover:border-gold-500/30 transition-all duration-500 shadow-lg hover:shadow-gold-900/10">
+                   <div className="relative h-64 overflow-hidden">
+                      <img src={asset.image} alt={asset.title} className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-navy-900 via-navy-900/20 to-transparent opacity-90"></div>
+                      <span className="absolute top-4 left-4 bg-navy-900/90 backdrop-blur px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-gold-500 rounded border border-gold-500/20">
+                         {asset.category}
+                      </span>
+                   </div>
+                   <div className="p-6">
+                      <h4 className="text-xl font-serif text-white mb-4 group-hover:text-gold-500 transition-colors truncate">{asset.title}</h4>
+                      <div className="flex justify-between items-center pt-4 border-t border-white/5">
+                         <div>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">Target ROI</p>
+                            <p className="text-lg font-medium text-emerald-400 font-mono">{asset.roi}</p>
+                         </div>
+                         <div className="text-right">
+                            <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">Min. Entry</p>
+                            <p className="text-lg font-medium text-white font-mono">{asset.min}</p>
+                         </div>
+                      </div>
+                   </div>
+                </Link>
+             ))}
+          </div>
+          
+          <div className="mt-8 text-center md:hidden">
+              <Link to="/investments" className="inline-flex items-center text-gold-500 font-medium">View All Assets <ArrowRight size={16} className="ml-2"/></Link>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Asset Classes (Data Driven) */}
       <div className="py-24 bg-navy-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-end mb-16">
@@ -95,10 +169,6 @@ const Home: React.FC = () => {
                 We select assets based on three core pillars: scarcity, historical resilience, and asymmetric upside potential.
               </p>
             </div>
-            <Link to="/investments" className="hidden md:flex items-center space-x-2 text-gold-500 hover:text-white transition-colors text-sm font-medium">
-              <span>View Full Prospectus</span>
-              <ArrowRight size={16} />
-            </Link>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -153,7 +223,7 @@ const Home: React.FC = () => {
         </div>
       </div>
 
-      {/* 4. Methodology Section */}
+      {/* 5. Methodology Section */}
       <div className="py-24 bg-navy-950 border-t border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">

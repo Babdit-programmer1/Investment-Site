@@ -1,30 +1,25 @@
+
 // @ts-ignore
 import { PrismaClient } from '@prisma/client';
+import { Money } from '../utils/money';
 
 const prisma = new PrismaClient();
 
 interface TaxYearSummary {
   year: number;
-  totalIncome: number; // Dividends/Yields
+  totalIncome: number; 
   shortTermCapitalGains: number;
-  longTermCapitalGains: number; // > 1 year holding
+  longTermCapitalGains: number; 
   totalLiability: number;
   currency: string;
   generatedAt: Date;
 }
 
 export const taxEngine = {
-  /**
-   * Calculates estimated tax liability for a given year based on ledger activity.
-   * Logic:
-   * - PROFIT events are treated as Ordinary Income (Yields/Dividends).
-   * - RETURN events (Asset Sales/Exits) calculate Capital Gains (Proceeds - Cost Basis).
-   */
   async generateTaxSummary(userId: string, year: number): Promise<TaxYearSummary> {
     const startDate = new Date(`${year}-01-01`);
     const endDate = new Date(`${year}-12-31`);
 
-    // 1. Fetch Income Events (Yields/Dividends)
     const incomeEvents = await prisma.financialLedger.findMany({
       where: {
         userId,
@@ -34,49 +29,48 @@ export const taxEngine = {
       }
     });
 
-    const totalIncome = incomeEvents.reduce((acc: number, tx: any) => acc + tx.amount, 0);
+    // Sum Income
+    const totalIncome = incomeEvents.reduce((acc: any, tx: any) => Money.add(acc, tx.amount), Money.ZERO);
 
-    // 2. Fetch Capital Events (Exits)
-    // In a full implementation, we'd match these against the original INVESTMENT entry to find Cost Basis.
-    // For this engine, we mock the gain portion as 20% of any 'RETURN' action.
     const capitalEvents = await prisma.financialLedger.findMany({
       where: {
         userId,
-        actionType: 'RETURN', // Implies asset liquidation/exit
+        actionType: 'RETURN',
         status: 'COMPLETED',
         createdAt: { gte: startDate, lte: endDate }
       }
     });
 
-    // Mock Capital Gains Logic
-    let shortTermCapitalGains = 0;
-    let longTermCapitalGains = 0;
+    let shortTermCapitalGains = Money.ZERO;
+    let longTermCapitalGains = Money.ZERO;
 
     capitalEvents.forEach((tx: any) => {
-        const proceeds = tx.amount;
-        const estimatedBasis = proceeds * 0.8; // Assume 20% profit margin
-        const gain = proceeds - estimatedBasis;
+        const proceeds = Money.from(tx.amount);
+        const estimatedBasis = Money.mul(proceeds, 0.8); // 20% margin
+        const gain = Money.sub(proceeds, estimatedBasis);
         
-        // Mock holding period check
-        const isLongTerm = Math.random() > 0.5; 
+        const isLongTerm = Math.random() > 0.5; // Mock logic
         
         if (isLongTerm) {
-            longTermCapitalGains += gain;
+            longTermCapitalGains = Money.add(longTermCapitalGains, gain);
         } else {
-            shortTermCapitalGains += gain;
+            shortTermCapitalGains = Money.add(shortTermCapitalGains, gain);
         }
     });
 
-    // 3. Calculate Liability (Mock Rates)
-    // Income: 30%, Short Term CG: 30%, Long Term CG: 20%
-    const liability = (totalIncome * 0.30) + (shortTermCapitalGains * 0.30) + (longTermCapitalGains * 0.20);
+    // Calculate Liability
+    const taxIncome = Money.mul(totalIncome, 0.30);
+    const taxShort = Money.mul(shortTermCapitalGains, 0.30);
+    const taxLong = Money.mul(longTermCapitalGains, 0.20);
+    
+    const liability = Money.add(taxIncome, Money.add(taxShort, taxLong));
 
     return {
       year,
-      totalIncome,
-      shortTermCapitalGains,
-      longTermCapitalGains,
-      totalLiability: liability,
+      totalIncome: Money.toNumber(totalIncome),
+      shortTermCapitalGains: Money.toNumber(shortTermCapitalGains),
+      longTermCapitalGains: Money.toNumber(longTermCapitalGains),
+      totalLiability: Money.toNumber(liability),
       currency: 'USD',
       generatedAt: new Date()
     };

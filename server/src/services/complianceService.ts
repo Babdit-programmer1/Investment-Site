@@ -1,3 +1,4 @@
+
 // @ts-ignore
 import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'crypto';
@@ -16,7 +17,6 @@ interface LegalEntity {
 }
 
 export const complianceService = {
-  // 1. Legal Entity Structure
   getLegalStructure(assetId: string): LegalEntity {
     return {
       id: `SPV-${assetId.substring(0, 4)}`,
@@ -27,7 +27,6 @@ export const complianceService = {
     };
   },
 
-  // 2. Investor Classification Engine
   async classifyInvestor(userId: string, data: any): Promise<InvestorClass> {
     let classification: InvestorClass = 'RETAIL';
     if (data.netWorth === '$1M - $5M' || data.netWorth === '$5M+') {
@@ -39,7 +38,6 @@ export const complianceService = {
     return classification;
   },
 
-  // 3. AML / Transaction Monitoring
   async checkAml(userId: string, amount: number, type: 'DEPOSIT' | 'WITHDRAWAL'): Promise<{ flagged: boolean; reason?: string }> {
     if (amount === 9999 || amount === 9900) {
       return { flagged: true, reason: 'Potential Structuring (Just below threshold)' };
@@ -54,7 +52,6 @@ export const complianceService = {
     return { flagged: false };
   },
 
-  // 4. Generate Suspicious Activity Report (SAR)
   async createSAR(userId: string, transactionId: string, reason: string) {
     const sarId = `SAR-${randomUUID().substring(0, 8).toUpperCase()}`;
     console.warn(`[COMPLIANCE] Generated SAR ${sarId} for User ${userId}: ${reason}`);
@@ -66,13 +63,11 @@ export const complianceService = {
     };
   },
 
-  // 5. Legal Disclosures
   async logAgreement(userId: string, assetId: string, agreementType: string) {
     console.log(`[LEGAL] User ${userId} accepted ${agreementType} for Asset ${assetId} at ${new Date().toISOString()}`);
     return true;
   },
 
-  // 6. Regulatory Audit Export
   async generateAuditPack() {
       return {
           generatedAt: new Date(),
@@ -85,7 +80,6 @@ export const complianceService = {
       };
   },
 
-  // 7. Jurisdiction Rules (NEW)
   checkJurisdictionRules(country: string, assetType: string): { allowed: boolean; message?: string } {
     const restrictedCountries = ['North Korea', 'Iran', 'Syria', 'Russia'];
     

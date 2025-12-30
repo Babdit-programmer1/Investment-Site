@@ -5,108 +5,58 @@ import { API_BASE_URL } from '../src/config';
 const SESSION_KEY = 'prestige_session';
 const TOKEN_KEY = 'prestige_token';
 
-// Mock User for Preview Mode
-const MOCK_USER: UserProfile = {
-  id: 'preview-user-123',
-  fullName: 'Preview Investor',
-  email: 'investor@prestige.com',
-  country: 'United Kingdom',
-  role: 'USER',
-  investorType: 'High Net Worth',
-  interests: ['Real Estate', 'Fine Art'],
-  onboardingCompleted: true,
-  kycStatus: 'APPROVED',
-  joinedDate: new Date().toISOString(),
-  profileData: { phone: '+44 20 7123 4567', emailAlerts: true }
-};
-
-const MOCK_ADMIN: UserProfile = {
-  ...MOCK_USER,
-  id: 'preview-admin-123',
-  email: 'admin@prestige.com',
-  fullName: 'Administrator',
-  role: 'ADMIN'
-};
-
 export const authService = {
   async register(userData: any): Promise<UserProfile> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData)
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Registration failed');
-      this.setSession(data.user, data.token);
-      return data.user;
-    } catch (error) {
-      console.warn("Backend unavailable, entering Preview Mode");
-      // Fallback for preview environment
-      const mockUser = { ...MOCK_USER, ...userData, onboardingCompleted: false };
-      this.setSession(mockUser, 'mock-jwt-token');
-      return mockUser;
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
+    });
+    
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.message || 'Registration failed');
     }
+    
+    this.setSession(data.user, data.token);
+    return data.user;
   },
 
   async login(email: string, password: string): Promise<UserProfile> {
-     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
       });
+      
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Invalid email or password');
+      if (!response.ok) {
+          throw new Error(data.message || 'Invalid email or password');
+      }
+      
       this.setSession(data.user, data.token);
       return data.user;
-     } catch (error) {
-       console.warn("Backend unavailable, entering Preview Mode");
-       // Check for admin simulation
-       if (email.includes('admin')) {
-         this.setSession(MOCK_ADMIN, 'mock-admin-token');
-         return MOCK_ADMIN;
-       }
-       // Default user simulation
-       this.setSession(MOCK_USER, 'mock-jwt-token');
-       return MOCK_USER;
-     }
   },
 
   async updateProfile(userData: Partial<UserProfile> & { phone?: string, emailAlerts?: boolean, pushAlerts?: boolean, twoFactor?: boolean }) {
-    try {
-      const token = this.getToken();
-      if (!token) throw new Error("Not authenticated");
+    const token = this.getToken();
+    if (!token) throw new Error("Not authenticated");
 
-      const response = await fetch(`${API_BASE_URL}/auth/me`, {
-        method: 'PATCH',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(userData)
-      });
+    const response = await fetch(`${API_BASE_URL}/auth/me`, {
+      method: 'PATCH',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(userData)
+    });
 
-      if (!response.ok) throw new Error('Failed to update profile');
-      const updatedUser = await response.json();
-      
-      // Update local session
-      this.setSession(updatedUser, token);
-      return updatedUser;
-    } catch (error) {
-      console.warn("Backend unavailable, updating local session only");
-      const current = this.getCurrentUser();
-      if(current) {
-        // Merge simple top-level and profileData for mock
-        const updated = { 
-            ...current, 
-            ...userData,
-            profileData: { ...current.profileData, ...userData } 
-        };
-        this.setSession(updated, this.getToken() || 'mock-token');
-        return updated;
-      }
-    }
+    if (!response.ok) throw new Error('Failed to update profile');
+    const updatedUser = await response.json();
+    
+    // Update local session
+    this.setSession(updatedUser, token);
+    return updatedUser;
   },
 
   async logout(): Promise<void> {

@@ -1,6 +1,8 @@
+
 // @ts-ignore
 import { PrismaClient } from '@prisma/client';
 import { currencyService } from './currencyService';
+import { Money } from '../utils/money';
 
 const prisma = new PrismaClient();
 
@@ -14,46 +16,45 @@ interface PnLSummary {
 }
 
 export const reportingService = {
-  /**
-   * Generates a comprehensive P&L analysis for the user in their preferred currency.
-   */
   async getPnL(userId: string, targetCurrency: string = 'USD'): Promise<PnLSummary> {
-    // 1. Get Active Portfolio (Unrealized)
     const portfolio = await prisma.userPortfolio.findMany({
       where: { userId, status: 'ACTIVE' },
       include: { asset: true }
     });
 
-    // Base amounts are in USD (stored in DB)
-    const investedUnrealizedUSD = portfolio.reduce((acc: number, item: any) => acc + item.amount, 0);
-    const currentValuationUSD = Math.floor(investedUnrealizedUSD * 1.05); // Mock 5% appreciation
-    const unrealizedGainsUSD = currentValuationUSD - investedUnrealizedUSD;
+    // Sum using Decimal
+    const investedUnrealizedUSD = portfolio.reduce((acc: any, item: any) => 
+        Money.add(acc, item.amount), Money.ZERO);
+    
+    // Mock 5% appreciation using Decimal multiplication
+    const currentValuationUSD = Money.mul(investedUnrealizedUSD, 1.05); 
+    const unrealizedGainsUSD = Money.sub(currentValuationUSD, investedUnrealizedUSD);
 
-    // 2. Get Realized History
     const realizedProfits = await prisma.financialLedger.aggregate({
       where: { userId, actionType: 'PROFIT' },
       _sum: { amount: true }
     });
     
-    const realizedGainsUSD = realizedProfits._sum.amount || 0;
+    const realizedGainsUSD = Money.from(realizedProfits._sum.amount || 0);
     const totalInvestedUSD = investedUnrealizedUSD; 
-    const totalGainUSD = realizedGainsUSD + unrealizedGainsUSD;
-    const totalRoi = totalInvestedUSD > 0 ? (totalGainUSD / totalInvestedUSD) * 100 : 0;
+    const totalGainUSD = Money.add(realizedGainsUSD, unrealizedGainsUSD);
+    
+    let totalRoi = 0;
+    if (Money.gt(totalInvestedUSD, 0)) {
+        // (Gain / Invested) * 100
+        totalRoi = Money.toNumber(Money.div(totalGainUSD, totalInvestedUSD).mul(100));
+    }
 
-    // 3. Convert to Target Currency
     return {
-      totalInvested: currencyService.convert(totalInvestedUSD, 'USD', targetCurrency),
-      currentValue: currencyService.convert(currentValuationUSD, 'USD', targetCurrency),
-      realizedGains: currencyService.convert(realizedGainsUSD, 'USD', targetCurrency),
-      unrealizedGains: currencyService.convert(unrealizedGainsUSD, 'USD', targetCurrency),
+      totalInvested: currencyService.convert(Money.toNumber(totalInvestedUSD), 'USD', targetCurrency),
+      currentValue: currencyService.convert(Money.toNumber(currentValuationUSD), 'USD', targetCurrency),
+      realizedGains: currencyService.convert(Money.toNumber(realizedGainsUSD), 'USD', targetCurrency),
+      unrealizedGains: currencyService.convert(Money.toNumber(unrealizedGainsUSD), 'USD', targetCurrency),
       totalRoi,
       currency: targetCurrency
     };
   },
 
-  /**
-   * Fetches raw transaction history.
-   */
   async getTransactionHistory(userId: string, filterType?: string) {
     const where: any = { userId };
     if (filterType && filterType !== 'ALL') {
