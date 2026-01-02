@@ -5,9 +5,10 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
+import { config } from '../config/env';
 
 const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_do_not_use_in_prod';
+const JWT_SECRET = config.jwtSecret;
 
 const registerSchema = z.object({
   fullName: z.string().min(2),
@@ -27,6 +28,11 @@ export const register = async (req: any, res: any) => {
   try {
     const data = registerSchema.parse(req.body);
 
+    // Prevent registration of the Owner email via public route
+    if (config.ownerEmail && data.email === config.ownerEmail) {
+        return res.status(403).json({ message: 'Reserved email address' });
+    }
+
     const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
@@ -35,9 +41,9 @@ export const register = async (req: any, res: any) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(data.password, salt);
 
-    const role = data.email.toLowerCase().includes('admin') ? 'ADMIN' : 'USER';
+    const role = 'USER'; // Default role
 
-    // Use transaction to ensure wallet is created with user
+    // Use transaction to ensure wallets are created with user
     const result = await prisma.$transaction(async (tx: any) => {
       const user = await tx.user.create({
         data: {
@@ -52,9 +58,13 @@ export const register = async (req: any, res: any) => {
         }
       });
 
-      // Create Wallet
+      // Create Dual Wallets
       await tx.wallet.create({
-        data: { userId: user.id }
+        data: { userId: user.id, type: 'MAIN', balance: 0 }
+      });
+      
+      await tx.wallet.create({
+        data: { userId: user.id, type: 'INVESTMENT', balance: 0 }
       });
 
       // Welcome Notification
@@ -99,6 +109,55 @@ export const login = async (req: any, res: any) => {
   try {
     const data = loginSchema.parse(req.body);
 
+    // 1. Check for Owner Login (Env Var based)
+    if (config.ownerEmail && data.email === config.ownerEmail) {
+        let isOwnerMatch = false;
+        
+        // If hash provided in env, use it. Otherwise fallback to DB check (less secure for owner)
+        if (config.ownerPasswordHash) {
+            isOwnerMatch = await bcrypt.compare(data.password, config.ownerPasswordHash);
+        } else {
+            console.warn("Owner password hash not set in env. Using DB fallback (less secure).");
+        }
+
+        if (isOwnerMatch) {
+            // Ensure Owner exists in DB for ID consistency
+            let ownerUser = await prisma.user.findUnique({ where: { email: config.ownerEmail } });
+            
+            if (!ownerUser) {
+                // Auto-seed owner if verified via Env Credentials
+                ownerUser = await prisma.user.create({
+                    data: {
+                        email: config.ownerEmail,
+                        fullName: 'Platform Owner',
+                        role: 'ADMIN',
+                        passwordHash: config.ownerPasswordHash || 'invalid_db_hash', // Should not be usable via standard db auth
+                        country: 'System',
+                        investorType: 'Institutional',
+                        onboardingCompleted: true,
+                        kycStatus: 'APPROVED'
+                    }
+                });
+                // Create wallet for admin ops
+                await prisma.wallet.create({ data: { userId: ownerUser.id, type: 'MAIN', balance: 0 } });
+            }
+
+            const token = jwt.sign(
+                { id: ownerUser.id, email: ownerUser.email, role: 'ADMIN' },
+                JWT_SECRET,
+                { expiresIn: '4h' } // Shorter session for admin
+            );
+
+            const userProfile = { ...ownerUser, role: 'ADMIN' };
+            delete (userProfile as any).passwordHash;
+            
+            return res.json({ user: userProfile, token });
+        } else if (config.ownerPasswordHash) {
+             return res.status(401).json({ message: 'Invalid credentials' });
+        }
+    }
+
+    // 2. Standard User Login
     const user = await prisma.user.findUnique({ where: { email: data.email } });
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });

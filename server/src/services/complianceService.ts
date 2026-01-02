@@ -2,6 +2,7 @@
 // @ts-ignore
 import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { Money } from '../utils/money';
 
 const prisma = new PrismaClient();
 
@@ -50,6 +51,36 @@ export const complianceService = {
         return { flagged: true, reason: 'Sanctions Match (Name Screening)' };
     }
     return { flagged: false };
+  },
+
+  /**
+   * Enforce investment limits based on Investor Class
+   */
+  checkTransactionLimits(user: any, amount: any, type: 'INVESTMENT' | 'WITHDRAWAL') {
+      const val = Money.toNumber(amount);
+      
+      // Withdrawals
+      if (type === 'WITHDRAWAL') {
+          if (user.kycStatus !== 'APPROVED') {
+              throw new Error('Compliance Restriction: Withdrawal requires verified KYC.');
+          }
+          return true;
+      }
+
+      // Investments
+      if (type === 'INVESTMENT') {
+          // Retail Limit: $25k per transaction
+          if (user.investorType === 'Individual' && val > 25000) {
+              throw new Error('Compliance Restriction: Individual investors are limited to $25,000 per transaction.');
+          }
+          // HNW Limit: $250k per transaction
+          if (user.investorType === 'High Net Worth' && val > 250000) {
+              throw new Error('Compliance Restriction: High Net Worth limit exceeded ($250k). Contact support for large block trades.');
+          }
+          // Institutional: No hard cap (Admin approval still required for logic flows)
+      }
+      
+      return true;
   },
 
   async createSAR(userId: string, transactionId: string, reason: string) {

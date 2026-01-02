@@ -1,3 +1,4 @@
+
 // @ts-ignore
 import { PrismaClient } from '@prisma/client';
 
@@ -91,8 +92,9 @@ export const aiAdvisorService = {
    * over 5 years under 3 scenarios.
    */
   async runPredictiveSimulation(userId: string): Promise<SimulationResult[]> {
-    const portfolio = await prisma.userPortfolio.findMany({ where: { userId, status: 'ACTIVE' } });
-    const currentVal = portfolio.reduce((acc: number, p: any) => acc + p.amount, 0) || 10000; // Default base for simulation if empty
+    // Corrected model name: portfolio instead of userPortfolio
+    const portfolio = await prisma.portfolio.findMany({ where: { userId, status: 'ACTIVE' } });
+    const currentVal = portfolio.reduce((acc: number, p: any) => acc + (p.amount ? Number(p.amount) : 0), 0) || 10000; // Default base for simulation if empty
 
     const data: SimulationResult[] = [];
     let cVal = currentVal;

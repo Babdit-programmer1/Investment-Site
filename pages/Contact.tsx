@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin, CheckCircle } from 'lucide-react';
+import { Mail, Phone, CheckCircle } from 'lucide-react';
 
 const Contact: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -41,20 +42,7 @@ const Contact: React.FC = () => {
           <div>
             <h2 className="font-serif text-2xl text-white mb-8">Contact Information</h2>
             <div className="space-y-8">
-              <div className="flex items-start space-x-4">
-                <div className="p-3 bg-navy-800 rounded-lg border border-white/10">
-                  <MapPin className="h-6 w-6 text-gold-500" />
-                </div>
-                <div>
-                  <h3 className="text-white font-medium mb-1">Headquarters</h3>
-                  <p className="text-slate-400 text-sm">
-                    100 Luxury Lane, Suite 500<br />
-                    New York, NY 10001<br />
-                    United States
-                  </p>
-                </div>
-              </div>
-
+              
               <div className="flex items-start space-x-4">
                 <div className="p-3 bg-navy-800 rounded-lg border border-white/10">
                   <Phone className="h-6 w-6 text-gold-500" />

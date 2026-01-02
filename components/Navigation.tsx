@@ -179,7 +179,7 @@ const Navigation: React.FC = () => {
                       <Link to="/dashboard" className="block px-4 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white flex items-center">
                         <LayoutDashboard className="h-4 w-4 mr-2" /> {t('nav.dashboard')}
                       </Link>
-                      <Link to="/wallet" className="block px-4 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white flex items-center">
+                      <Link to="/dashboard?tab=wallet" className="block px-4 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white flex items-center">
                         <Wallet className="h-4 w-4 mr-2" /> {t('nav.wallet')}
                       </Link>
                       <Link to="/settings" className="block px-4 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white flex items-center">
@@ -218,7 +218,7 @@ const Navigation: React.FC = () => {
               <div className="border-t border-white/10 mt-4 pt-4">
                  <Link to="/dashboard" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-white/5 flex items-center"><LayoutDashboard className="h-5 w-5 mr-2" /> {t('nav.dashboard')}</Link>
                  <Link to="/settings" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-white/5 flex items-center"><SettingsIcon className="h-5 w-5 mr-2" /> Settings</Link>
-                 <Link to="/wallet" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-white/5 flex items-center"><Wallet className="h-5 w-5 mr-2" /> {t('nav.wallet')}</Link>
+                 <Link to="/dashboard?tab=wallet" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-white/5 flex items-center"><Wallet className="h-5 w-5 mr-2" /> {t('nav.wallet')}</Link>
                  <button onClick={handleLogout} className="w-full text-left px-3 py-2 rounded-md text-base font-medium text-slate-400 hover:bg-white/5 flex items-center"><LogOut className="h-5 w-5 mr-2" /> Sign Out</button>
               </div>
             )}

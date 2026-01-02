@@ -17,7 +17,7 @@ interface PnLSummary {
 
 export const reportingService = {
   async getPnL(userId: string, targetCurrency: string = 'USD'): Promise<PnLSummary> {
-    const portfolio = await prisma.userPortfolio.findMany({
+    const portfolio = await prisma.portfolio.findMany({
       where: { userId, status: 'ACTIVE' },
       include: { asset: true }
     });
@@ -31,7 +31,7 @@ export const reportingService = {
     const unrealizedGainsUSD = Money.sub(currentValuationUSD, investedUnrealizedUSD);
 
     const realizedProfits = await prisma.financialLedger.aggregate({
-      where: { userId, actionType: 'PROFIT' },
+      where: { userId, actionType: 'DIVIDEND' },
       _sum: { amount: true }
     });
     
@@ -66,7 +66,10 @@ export const reportingService = {
       orderBy: { createdAt: 'desc' },
       take: 100
     });
-
-    return transactions;
+    
+    return transactions.map((t: any) => ({
+        ...t,
+        amount: Money.toNumber(t.amount)
+    }));
   }
 };

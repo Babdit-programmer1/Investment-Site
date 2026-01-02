@@ -1,83 +1,97 @@
-import dotenv from 'dotenv';
 
-dotenv.config();
+// Crypto-Only Payment Service
+// Manages platform wallet addresses for deposits
 
-interface PaymentInitiation {
-  email: string;
-  amount: number; // In base units (e.g., cents/kobo)
-  currency: string;
-  reference: string;
-  metadata: any;
-  callbackUrl: string;
-}
+// @ts-ignore
+import { PrismaClient } from '@prisma/client';
+import { adminLogService } from './adminLogService';
 
-interface PaymentResponse {
-  authorization_url: string;
-  access_code?: string;
-  reference: string;
-}
+const prisma = new PrismaClient();
 
-class PaymentService {
-  private paystackSecret = process.env.PAYSTACK_SECRET_KEY;
-  private stripeSecret = process.env.STRIPE_SECRET_KEY;
+// In-memory cache for addresses to prevent DB spam
+let addressCache: Record<string, string> | null = null;
+let cacheTime = 0;
+const CACHE_TTL = 60000; // 1 minute
 
-  async initiatePayment(gateway: 'PAYSTACK' | 'STRIPE' | 'SIMULATOR', data: PaymentInitiation): Promise<PaymentResponse> {
-    if (gateway === 'SIMULATOR' || (!this.paystackSecret && !this.stripeSecret)) {
-      console.log(`[PaymentService] Simulating ${gateway} payment for ${data.reference}`);
-      // Return a simulation URL that redirects back to our frontend verify page
-      return {
-        authorization_url: `${data.callbackUrl}?reference=${data.reference}&status=success&simulated=true`,
-        reference: data.reference
-      };
-    }
+const DEFAULT_ADDRESSES: Record<string, string> = {
+  'BTC': 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+  'ETH': '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+  'BSC': '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+  'POLYGON': '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+  'SOL': 'HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrx',
+  'TRON': 'TNPEeAAFB7KtNrMaKKMA463n2M5t96pp3d',
+  'USDT': '0x71C7656EC7ab88b098defB751B7401B5f6d8976F'
+};
 
-    if (gateway === 'PAYSTACK') {
-      return this.initiatePaystack(data);
-    } 
+export const paymentService = {
+  async getDepositAddress(chain: string): Promise<string> {
+    const addresses = await this.getAllAddresses();
+    const normalizedChain = chain.toUpperCase();
     
-    if (gateway === 'STRIPE') {
-      return this.initiateStripe(data);
+    // Map aliases
+    if (normalizedChain === 'BITCOIN') return addresses['BTC'] || DEFAULT_ADDRESSES['BTC'];
+    if (normalizedChain === 'ETHEREUM' || normalizedChain === 'ERC20') return addresses['ETH'] || DEFAULT_ADDRESSES['ETH'];
+    if (normalizedChain === 'BNB' || normalizedChain === 'BEP20') return addresses['BSC'] || DEFAULT_ADDRESSES['BSC'];
+    if (normalizedChain === 'MATIC') return addresses['POLYGON'] || DEFAULT_ADDRESSES['POLYGON'];
+    if (normalizedChain === 'SOLANA') return addresses['SOL'] || DEFAULT_ADDRESSES['SOL'];
+    if (normalizedChain === 'TRC20') return addresses['TRON'] || DEFAULT_ADDRESSES['TRON'];
+
+    return addresses[normalizedChain] || DEFAULT_ADDRESSES['ETH'];
+  },
+
+  async getAllAddresses(): Promise<Record<string, string>> {
+    const now = Date.now();
+    if (addressCache && (now - cacheTime < CACHE_TTL)) {
+      return addressCache;
     }
 
-    throw new Error('Unsupported gateway');
-  }
+    try {
+      // Fetch from DB
+      const settings = await prisma.systemSetting.findMany({
+        where: { key: { startsWith: 'WALLET_' } }
+      });
 
-  async verifyPayment(gateway: 'PAYSTACK' | 'STRIPE' | 'SIMULATOR', reference: string): Promise<boolean> {
-    if (gateway === 'SIMULATOR' || (!this.paystackSecret && !this.stripeSecret)) {
-      return true; // Always valid in simulation
+      const dbAddresses: Record<string, string> = {};
+      settings.forEach((s: any) => {
+        const chain = s.key.replace('WALLET_', '');
+        dbAddresses[chain] = s.value;
+      });
+
+      // Merge defaults with DB overrides
+      addressCache = { ...DEFAULT_ADDRESSES, ...dbAddresses };
+      cacheTime = now;
+      return addressCache;
+    } catch (e) {
+      console.warn("Failed to fetch dynamic wallet addresses, using defaults");
+      return DEFAULT_ADDRESSES;
     }
+  },
 
-    if (gateway === 'PAYSTACK') {
-      // Mock Paystack verification call
-      // In prod: axios.get(`https://api.paystack.co/transaction/verify/${reference}`)
-      return true; 
-    }
+  async updateDepositAddress(chain: string, address: string, adminId: string, ip: string): Promise<void> {
+    const key = `WALLET_${chain.toUpperCase()}`;
+    
+    // Get old value for logging
+    const oldSetting = await prisma.systemSetting.findUnique({ where: { key } });
+    const oldAddress = oldSetting?.value || DEFAULT_ADDRESSES[chain.toUpperCase()] || 'N/A';
 
-    if (gateway === 'STRIPE') {
-      // Mock Stripe verification
-      return true;
-    }
+    // Upsert new address
+    await prisma.systemSetting.upsert({
+      where: { key },
+      update: { value: address },
+      create: { key, value: address }
+    });
 
-    return false;
+    // Invalidate Cache
+    addressCache = null;
+
+    // Log Immutable Action
+    await adminLogService.logAction({
+      adminId,
+      actionType: 'UPDATE_SYSTEM_WALLET',
+      targetId: chain,
+      targetType: 'SYSTEM_CONFIG',
+      details: { chain, oldAddress, newAddress: address },
+      ipAddress: ip
+    });
   }
-
-  private async initiatePaystack(data: PaymentInitiation): Promise<PaymentResponse> {
-    // Implementation would use axios to call https://api.paystack.co/transaction/initialize
-    // For now, we simulate success if key exists but logic is blocked by environment constraints
-    return {
-      authorization_url: `${data.callbackUrl}?reference=${data.reference}&status=success&gateway=paystack`,
-      reference: data.reference,
-      access_code: 'simulated_access_code'
-    };
-  }
-
-  private async initiateStripe(data: PaymentInitiation): Promise<PaymentResponse> {
-    // Implementation would use stripe.paymentIntents.create
-    return {
-      authorization_url: `${data.callbackUrl}?reference=${data.reference}&status=success&gateway=stripe`,
-      reference: data.reference
-    };
-  }
-}
-
-export const paymentService = new PaymentService();
+};

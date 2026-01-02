@@ -1,7 +1,9 @@
+
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
+import { config } from '../config/env';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_do_not_use_in_prod';
+const JWT_SECRET = config.jwtSecret;
 
 export const authenticateToken = (req: any, res: any, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
@@ -26,8 +28,14 @@ export const requireAdmin = (req: any, res: any, next: NextFunction) => {
   const user = req.user;
   
   if (!user || typeof user === 'string' || (user as any).role !== 'ADMIN') {
-    res.status(403).json({ message: 'Access denied: Admins only' });
-    return;
+    return res.status(403).json({ message: 'Access denied: Admins only' });
   }
+
+  // Hard-restriction: If OWNER_EMAIL is set in env, only that email can access admin routes
+  if (config.ownerEmail && user.email !== config.ownerEmail) {
+      console.warn(`[Security] Unauthorized admin access attempt by ${user.email}`);
+      return res.status(403).json({ message: 'Access denied: Restricted to Platform Owner' });
+  }
+
   next();
 };

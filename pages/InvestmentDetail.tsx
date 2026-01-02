@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Investment } from '../types';
 import { API_BASE_URL } from '../src/config';
-import { ArrowLeft, TrendingUp, Shield, Globe, MapPin, FileText, Lock, Activity, Users, Download, ChevronRight, Share2, CheckCircle } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Shield, FileText, Activity, Share2, CheckCircle, Download, ChevronRight } from 'lucide-react';
 import { useGlobal } from '../context/GlobalContext';
 import InvestModal from '../components/InvestModal';
 
@@ -14,7 +14,7 @@ const InvestmentDetail: React.FC = () => {
   
   const [asset, setAsset] = useState<Investment | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'FINANCIALS' | 'DOCUMENTS' | 'LOCATION'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'FINANCIALS' | 'DOCUMENTS'>('OVERVIEW');
   const [showInvestModal, setShowInvestModal] = useState(false);
 
   useEffect(() => {
@@ -34,12 +34,12 @@ const InvestmentDetail: React.FC = () => {
             title: 'The Kensington Estate',
             category: 'Real Estate',
             fundStrategy: 'Value-Add + Yield',
-            description: 'A rare opportunity to acquire a stake in a Grade II listed residential conversion in West London. This asset combines immediate rental yield with significant capital appreciation potential through modernization.',
+            description: 'A rare opportunity to acquire a stake in a Grade II listed residential conversion. This asset combines immediate rental yield with significant capital appreciation potential through modernization.',
             price: '$50,000',
             minInvestment: 50000,
             returnRate: '14.5%',
             targetIrp: 14.5,
-            term: '36 Months',
+            term: '6-12 Months',
             riskLevel: 'Low',
             status: 'ACTIVE',
             imageUrl: 'https://images.unsplash.com/photo-1600596542815-e328701102b9?q=80&w=1600',
@@ -82,8 +82,6 @@ const InvestmentDetail: React.FC = () => {
                         </div>
                         <h1 className="text-4xl md:text-6xl font-serif text-white mb-2">{asset.title}</h1>
                         <p className="text-xl text-slate-300 flex items-center gap-2">
-                            <MapPin size={18} className="text-gold-500" /> London, United Kingdom 
-                            <span className="text-slate-500 mx-2">|</span>
                             <span className="font-mono text-sm text-slate-400">{asset.ticker}</span>
                         </p>
                     </div>
@@ -132,7 +130,7 @@ const InvestmentDetail: React.FC = () => {
                 {/* Tabs */}
                 <div className="border-b border-white/10 mb-8">
                     <div className="flex space-x-8">
-                        {['OVERVIEW', 'FINANCIALS', 'DOCUMENTS', 'LOCATION'].map((tab) => (
+                        {['OVERVIEW', 'FINANCIALS', 'DOCUMENTS'].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab as any)}
@@ -164,7 +162,7 @@ const InvestmentDetail: React.FC = () => {
                                 <div className="bg-navy-800 p-6 rounded border border-white/5">
                                     <TrendingUp className="w-8 h-8 text-gold-500 mb-4" />
                                     <h4 className="text-white font-medium mb-2">Exit Strategy</h4>
-                                    <p className="text-sm text-slate-400">Targeted sale at year 3-5 upon completion of value-add renovations. Secondary market liquidity available after 12-month lockup.</p>
+                                    <p className="text-sm text-slate-400">Targeted sale at month 6-12 upon completion of value-add renovations. Secondary market liquidity available after 3-month lockup.</p>
                                 </div>
                             </div>
 
@@ -172,7 +170,7 @@ const InvestmentDetail: React.FC = () => {
                                 <h3 className="text-2xl font-serif text-white mb-4">Key Highlights</h3>
                                 <ul className="space-y-3">
                                     {[
-                                        "Prime location in Kensington & Chelsea borough",
+                                        "High demand metropolitan district",
                                         "Acquired at 15% below market value due to distress sale",
                                         "Planning permission granted for 2 additional units",
                                         "projected 22% ROI in aggressive market scenario"
@@ -226,17 +224,6 @@ const InvestmentDetail: React.FC = () => {
                             ))}
                         </div>
                     )}
-                    
-                    {activeTab === 'LOCATION' && (
-                        <div className="animate-fade-in h-96 bg-navy-800 rounded border border-white/5 flex items-center justify-center relative overflow-hidden">
-                            <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=1600')] bg-cover bg-center opacity-30"></div>
-                            <div className="relative z-10 text-center">
-                                <MapPin size={48} className="text-gold-500 mx-auto mb-4" />
-                                <h3 className="text-2xl font-serif text-white">Kensington, London</h3>
-                                <button className="mt-4 px-6 py-2 bg-white/10 backdrop-blur rounded text-white hover:bg-white/20 text-sm">Open in Maps</button>
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
 
@@ -266,24 +253,6 @@ const InvestmentDetail: React.FC = () => {
 
                     <button onClick={() => setShowInvestModal(true)} className="w-full bg-gold-600 hover:bg-gold-500 text-white py-3 rounded font-medium mb-3">Invest Now</button>
                     <p className="text-center text-xs text-slate-500">Minimum investment {convertPrice(asset.minInvestment)}</p>
-                </div>
-
-                {/* Manager Card */}
-                <div className="bg-navy-800 rounded border border-white/5 p-6">
-                    <h3 className="text-white font-serif text-lg mb-4">Asset Manager</h3>
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="w-12 h-12 bg-slate-700 rounded-full overflow-hidden">
-                            <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=400" alt="Manager" />
-                        </div>
-                        <div>
-                            <p className="text-white font-medium">Prestige Realty Ltd</p>
-                            <p className="text-xs text-gold-500">Tier 1 Partner</p>
-                        </div>
-                    </div>
-                    <p className="text-sm text-slate-400 mb-4">Over $500M in luxury assets under management. Specialized in London & NYC prime residential.</p>
-                    <Link to="/about" className="text-xs text-gold-500 hover:text-white flex items-center">
-                        View Track Record <ChevronRight size={12} />
-                    </Link>
                 </div>
             </div>
         </div>

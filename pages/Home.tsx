@@ -1,6 +1,8 @@
+
 import React from 'react';
-import { ArrowRight, TrendingUp, ShieldCheck, Globe, Database, PieChart, BarChart, Clock } from 'lucide-react';
+import { ArrowRight, TrendingUp, ShieldCheck, Globe, Database, PieChart, BarChart, Clock, LayoutDashboard, LogIn, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const FEATURED_ASSETS = [
   {
@@ -8,7 +10,7 @@ const FEATURED_ASSETS = [
     title: 'The Kensington Estate',
     category: 'Real Estate',
     image: 'https://images.unsplash.com/photo-1600596542815-e328701102b9?q=80&w=1600',
-    roi: '14.5%',
+    roi: '14.5% / 6m',
     min: '$50,000'
   },
   {
@@ -16,7 +18,7 @@ const FEATURED_ASSETS = [
     title: 'Warhol "Marilyn" Series',
     category: 'Fine Art',
     image: 'https://images.unsplash.com/photo-1561214115-f2f134cc4912?q=80&w=1600',
-    roi: '18.2%',
+    roi: '18.2% / 12m',
     min: '$100,000'
   },
   {
@@ -24,12 +26,14 @@ const FEATURED_ASSETS = [
     title: '1962 Ferrari 250 GTO',
     category: 'Luxury Vehicles',
     image: 'https://images.unsplash.com/photo-1583121274602-3e2820c698d2?q=80&w=1600',
-    roi: '24.0%',
+    roi: '24.0% / 3m',
     min: '$500,000'
   }
 ];
 
 const Home: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+
   return (
     <div className="bg-navy-900">
       {/* Market Pulse Ticker */}
@@ -58,7 +62,7 @@ const Home: React.FC = () => {
 
         <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <span className="inline-block py-1 px-3 rounded border border-gold-500/30 bg-gold-500/10 text-gold-500 text-xs font-mono tracking-widest mb-6">
-            INSTITUTIONAL GRADE PLATFORM
+            SHORT-TERM HIGH-YIELD PLATFORM
           </span>
           <h1 className="font-serif text-5xl md:text-7xl text-white font-bold mb-6 leading-tight">
             Precision Investing in <br/>
@@ -68,21 +72,33 @@ const Home: React.FC = () => {
           </h1>
           <p className="text-slate-300 text-lg md:text-xl max-w-3xl mx-auto mb-10 font-light leading-relaxed">
             Our mission is to democratize access to million-dollar opportunities in real estate, art, and collectibles. 
-            Engineered for accreditation-level ROI, wealth preservation, and portfolio diversification.
+            Engineered for accreditation-level ROI and immediate liquidity options.
           </p>
+          
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              to="/investments"
-              className="w-full sm:w-auto px-10 py-4 bg-gold-600 text-white font-serif tracking-wide hover:bg-gold-500 transition-colors shadow-lg shadow-gold-900/30 rounded-sm"
-            >
-              Access Marketplace
-            </Link>
-            <Link
-              to="/resources"
-              className="w-full sm:w-auto px-10 py-4 border border-white/30 text-white font-serif tracking-wide hover:bg-white/10 transition-colors backdrop-blur-sm rounded-sm"
-            >
-              Investment Thesis
-            </Link>
+            {isAuthenticated ? (
+              <Link
+                to="/dashboard"
+                className="w-full sm:w-auto px-10 py-4 bg-gold-600 text-white font-serif tracking-wide hover:bg-gold-500 transition-colors shadow-lg shadow-gold-900/30 rounded-sm flex items-center justify-center gap-2"
+              >
+                <LayoutDashboard className="w-5 h-5" /> Go to Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="w-full sm:w-auto px-10 py-4 bg-gold-600 text-white font-serif tracking-wide hover:bg-gold-500 transition-colors shadow-lg shadow-gold-900/30 rounded-sm flex items-center justify-center gap-2"
+                >
+                  <LogIn className="w-5 h-5" /> Member Login
+                </Link>
+                <Link
+                  to="/register"
+                  className="w-full sm:w-auto px-10 py-4 border border-white/30 text-white font-serif tracking-wide hover:bg-white/10 transition-colors backdrop-blur-sm rounded-sm flex items-center justify-center gap-2"
+                >
+                  <UserPlus className="w-5 h-5" /> Join Platform
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -100,8 +116,8 @@ const Home: React.FC = () => {
               <p className="text-xs text-slate-500 uppercase tracking-widest">Assets Securitized</p>
             </div>
             <div className="text-center px-4">
-              <p className="text-3xl font-light text-white mb-1">2.4yr</p>
-              <p className="text-xs text-slate-500 uppercase tracking-widest">Avg. Holding Period</p>
+              <p className="text-3xl font-light text-white mb-1">6mo</p>
+              <p className="text-xs text-slate-500 uppercase tracking-widest">Avg. Term</p>
             </div>
             <div className="text-center px-4">
               <p className="text-3xl font-light text-white mb-1">0%</p>
@@ -117,7 +133,7 @@ const Home: React.FC = () => {
           <div className="flex justify-between items-end mb-12">
              <div>
                 <h2 className="text-gold-500 font-mono text-xs tracking-widest uppercase mb-2">Curated Opportunities</h2>
-                <h3 className="font-serif text-3xl md:text-4xl text-white">Featured Investments</h3>
+                <h3 className="font-serif text-3xl md:text-4xl text-white">Fast-Moving Assets</h3>
              </div>
              <Link to="/investments" className="hidden md:flex items-center space-x-2 text-slate-400 hover:text-white transition-colors text-sm">
                 <span>View All Assets</span>
@@ -139,7 +155,7 @@ const Home: React.FC = () => {
                       <h4 className="text-xl font-serif text-white mb-4 group-hover:text-gold-500 transition-colors truncate">{asset.title}</h4>
                       <div className="flex justify-between items-center pt-4 border-t border-white/5">
                          <div>
-                            <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">Target ROI</p>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">Target ROI (Term)</p>
                             <p className="text-lg font-medium text-emerald-400 font-mono">{asset.roi}</p>
                          </div>
                          <div className="text-right">
@@ -166,7 +182,7 @@ const Home: React.FC = () => {
               <h2 className="text-gold-500 font-mono text-xs tracking-widest uppercase mb-2">Portfolio Construction</h2>
               <h3 className="font-serif text-3xl md:text-4xl text-white mb-4">Strategic Asset Allocation</h3>
               <p className="text-slate-400">
-                We select assets based on three core pillars: scarcity, historical resilience, and asymmetric upside potential.
+                We select assets based on three core pillars: scarcity, historical resilience, and short-term upside potential.
               </p>
             </div>
           </div>
@@ -175,24 +191,21 @@ const Home: React.FC = () => {
             {[
               { 
                 title: "Real Estate", 
-                subtitle: "High-Yield & Growth",
-                desc: "Million-dollar properties in London, NYC, and Dubai. Focus on commercial conversion and luxury residential.",
-                stats: "12-15% Target IRR",
-                timeframe: "3-5 Years"
+                subtitle: "Value-Add Flips",
+                desc: "Quick-turnaround properties in prime metropolitan districts. Focus on commercial conversion and rapid renovation.",
+                stats: "12-15% IRR (6-12m)"
               },
               { 
                 title: "Fine Art", 
-                subtitle: "Capital Preservation",
-                desc: "Blue-chip works from Post-War & Contemporary masters. Uncorrelated with public equity markets.",
-                stats: "10-18% Hist. APY",
-                timeframe: "5-10 Years"
+                subtitle: "Market Arbitrage",
+                desc: "Blue-chip works from Post-War & Contemporary masters. Targeted for auction cycle arbitrage.",
+                stats: "10-18% ROI (12m)"
               },
               { 
                 title: "Collectibles", 
-                subtitle: "Alternative Alpha",
-                desc: "Investment-grade watches, cars, and artifacts. Driven by diminishing supply and global collector demand.",
-                stats: "Outperforms S&P 500",
-                timeframe: "2-7 Years"
+                subtitle: "Instant Liquidity",
+                desc: "Investment-grade watches and cars. Driven by diminishing supply and immediate collector demand.",
+                stats: "20%+ Growth (3-6m)"
               }
             ].map((cat, i) => (
               <div key={i} className="group p-8 bg-navy-800 border border-white/5 hover:border-gold-500/30 rounded-sm transition-all duration-300">
@@ -210,11 +223,7 @@ const Home: React.FC = () => {
                 <div className="space-y-3">
                     <div className="flex items-center text-white font-mono text-sm">
                         <BarChart size={16} className="mr-2 text-emerald-400" />
-                        {cat.stats}
-                    </div>
-                    <div className="flex items-center text-slate-300 font-mono text-xs">
-                        <Clock size={16} className="mr-2 text-slate-500" />
-                        Est. Timeframe: <span className="text-white ml-2">{cat.timeframe}</span>
+                        <span className="text-emerald-400 font-bold">{cat.stats}</span>
                     </div>
                 </div>
               </div>
@@ -232,7 +241,7 @@ const Home: React.FC = () => {
                 <div className="relative bg-navy-900 p-8 border border-white/10 rounded-sm shadow-2xl">
                    {/* Simulated Chart UI */}
                    <div className="flex justify-between items-center mb-8">
-                      <h4 className="text-white font-serif">Comparative Performance (5Y)</h4>
+                      <h4 className="text-white font-serif">Comparative Performance (Short Term)</h4>
                       <div className="flex gap-2">
                         <div className="w-3 h-3 rounded-full bg-gold-500"></div><span className="text-xs text-slate-400">Prestige</span>
                         <div className="w-3 h-3 rounded-full bg-slate-600"></div><span className="text-xs text-slate-400">S&P 500</span>
@@ -244,11 +253,11 @@ const Home: React.FC = () => {
                       ))}
                    </div>
                    <div className="flex justify-between mt-4 text-xs text-slate-500 font-mono">
-                      <span>2019</span>
-                      <span>2020</span>
-                      <span>2021</span>
-                      <span>2022</span>
-                      <span>2023</span>
+                      <span>Q1</span>
+                      <span>Q2</span>
+                      <span>Q3</span>
+                      <span>Q4</span>
+                      <span>Q1 (Proj)</span>
                    </div>
                 </div>
               </div>

@@ -1,3 +1,4 @@
+
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -7,13 +8,16 @@ export const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
   jwtSecret: process.env.JWT_SECRET || 'dev_secret_fallback_do_not_use_in_prod',
   
+  // Owner Credentials (Super Admin)
+  ownerEmail: process.env.OWNER_EMAIL,
+  ownerPasswordHash: process.env.OWNER_PASSWORD_HASH,
+
   // Database
-  // In preview, we might not have a DB, allowing services to degrade gracefully
   dbUrl: process.env.DATABASE_URL,
 
-  // Payment Gateways
-  paystackSecret: process.env.PAYSTACK_SECRET_KEY,
-  stripeSecret: process.env.STRIPE_SECRET_KEY,
+  // Payment Gateways (REMOVED: Crypto-Only Platform)
+  // paystackSecret: process.env.PAYSTACK_SECRET_KEY,
+  // stripeSecret: process.env.STRIPE_SECRET_KEY,
   
   // KYC
   sumsubToken: process.env.SUMSUB_APP_TOKEN,

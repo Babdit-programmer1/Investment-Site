@@ -1,3 +1,4 @@
+
 import { Request, Response } from 'express';
 // @ts-ignore
 import { PrismaClient } from '@prisma/client';
@@ -188,7 +189,7 @@ export const getTaxSummary = async (req: any, res: any) => {
 
 // Helper
 const generateStatementRecord = async (userId: string, period: string) => {
-    const portfolio = await prisma.userPortfolio.findMany({
+    const portfolio = await prisma.portfolio.findMany({
         where: { userId, status: 'ACTIVE' },
         include: { asset: true }
     });

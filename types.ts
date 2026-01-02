@@ -1,12 +1,27 @@
 
 export type Role = 'USER' | 'ADMIN';
 export type KycStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
-export type InvestmentStatus = 'ACTIVE' | 'CLOSED' | 'UPCOMING';
-export type PaymentStatus = 'PENDING' | 'ESCROWED' | 'ACTIVE' | 'REFUNDED' | 'REJECTED';
+export type InvestmentStatus = 'ACTIVE' | 'CLOSED' | 'UPCOMING' | 'PAST_DUE' | 'MATURED';
+export type PaymentStatus = 'PENDING' | 'ESCROWED' | 'ACTIVE' | 'REFUNDED' | 'REJECTED' | 'PAID' | 'LATE';
+export type InvestmentType = 'ONE_TIME' | 'MONTHLY';
 
 export enum ChatRole {
   USER = 'user',
   MODEL = 'model'
+}
+
+export interface AdminLog {
+  id: string;
+  adminId: string;
+  actionType: string; // APPROVE_DEPOSIT, ADJUST_WALLET, etc.
+  targetId?: string; // User ID, Wallet ID, etc.
+  targetType?: string; // USER, WALLET, INVESTMENT
+  amount?: number;
+  currency?: string;
+  details?: string; // JSON string for metadata
+  ipAddress?: string;
+  createdAt: string;
+  admin?: { fullName: string; email: string };
 }
 
 export interface Investment {
@@ -74,6 +89,15 @@ export interface UserProfile {
   profileData?: any; // Stores phone, preferences, and extended attributes
 }
 
+export interface MonthlyPayment {
+  id: string;
+  portfolioId: string;
+  amount: number;
+  dueDate: string;
+  paidAt?: string;
+  status: PaymentStatus;
+}
+
 export interface InvestmentIntent {
   id: string;
   userId: string;
@@ -86,11 +110,18 @@ export interface InvestmentIntent {
   createdAt: string;
   asset?: Investment;
   user?: UserProfile;
+  // New Fields for Monthly Plans
+  investmentType?: InvestmentType;
+  monthlyAmount?: number;
+  durationMonths?: number;
+  monthsPaid?: number;
+  nextPaymentDate?: string;
+  payments?: MonthlyPayment[];
 }
 
 export interface WalletTransaction {
   id: string;
-  type: 'DEPOSIT' | 'WITHDRAWAL' | 'INVEST' | 'RETURN';
+  type: 'DEPOSIT' | 'WITHDRAWAL' | 'INVEST' | 'RETURN' | 'INVESTMENT_TOP_UP' | 'MONTHLY_INVESTMENT_PAYMENT' | 'ADMIN_CREDIT' | 'ADMIN_DEBIT' | 'DEPOSIT_APPROVED' | 'DEPOSIT_REJECTED' | 'WITHDRAWAL_APPROVED' | 'WITHDRAWAL_REJECTED';
   amount: number;
   currency: string;
   reference: string;

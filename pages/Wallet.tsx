@@ -1,19 +1,26 @@
 
 import React, { useEffect, useState } from 'react';
-import { Wallet as WalletIcon, ArrowUpRight, ArrowDownLeft, CreditCard, Bitcoin, RefreshCw, Loader2, DollarSign, FileText, CheckCircle, Clock, AlertCircle, Lock } from 'lucide-react';
+import { Wallet as WalletIcon, ArrowUpRight, ArrowDownLeft, CreditCard, Bitcoin, RefreshCw, Loader2, DollarSign, FileText, CheckCircle, Clock, AlertCircle, Lock, Copy } from 'lucide-react';
 import { Wallet } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useGlobal } from '../context/GlobalContext';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../src/config';
 
+// Fallback if API fails
+const DEFAULT_ADDRESSES: Record<string, string> = {
+    'BTC': 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+    'ETH': '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+    'BSC': '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+    'POLYGON': '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+    'SOLANA': 'HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrx',
+    'TRON': 'TNPEeAAFB7KtNrMaKKMA463n2M5t96pp3d'
+};
+
 const MOCK_WALLET: Wallet = {
   id: 'w1',
   fiatBalance: 15000,
-  cryptoBalances: [
-    { id: 'c1', asset: 'BTC', balance: 0.045 },
-    { id: 'c2', asset: 'ETH', balance: 1.2 }
-  ],
+  cryptoBalances: [],
   transactions: []
 };
 
@@ -36,8 +43,14 @@ const WalletPage: React.FC = () => {
   const [action, setAction] = useState<'DEPOSIT' | 'WITHDRAWAL' | null>(null);
   const [amount, setAmount] = useState<number>(0);
   const [asset, setAsset] = useState('USD');
+  const [selectedChain, setSelectedChain] = useState('ETH');
+  const [txHash, setTxHash] = useState('');
+  const [withdrawAddress, setWithdrawAddress] = useState('');
   const [kycError, setKycError] = useState(false);
   const [withdrawalMessage, setWithdrawalMessage] = useState('');
+  
+  // Config State
+  const [depositAddresses, setDepositAddresses] = useState<Record<string, string>>(DEFAULT_ADDRESSES);
   
   // Ledger State
   const [logs, setLogs] = useState<LedgerLog[]>([]);
@@ -51,11 +64,26 @@ const WalletPage: React.FC = () => {
 
   useEffect(() => {
     fetchWallet();
+    fetchDepositConfig();
   }, []);
 
   useEffect(() => {
     fetchLogs();
   }, [activeTab]);
+
+  const fetchDepositConfig = async () => {
+      try {
+          const res = await fetch(`${API_BASE_URL}/payments/config`, {
+              headers: { Authorization: `Bearer ${token}` }
+          });
+          if (res.ok) {
+              const data = await res.json();
+              setDepositAddresses(data);
+          }
+      } catch (e) {
+          console.warn("Failed to fetch dynamic deposit addresses, using fallback");
+      }
+  };
 
   const fetchWallet = async () => {
     try {
@@ -82,7 +110,6 @@ const WalletPage: React.FC = () => {
         const data = await res.json();
         setLogs(data);
       } else {
-        // Fallback to wallet transactions if logs endpoint isn't fully ready
         if (wallet?.transactions) {
            const mapped = wallet.transactions.map((t: any) => ({
              id: t.id,
@@ -111,6 +138,9 @@ const WalletPage: React.FC = () => {
       setKycError(false);
       setAction(type);
       setWithdrawalMessage('');
+      setAmount(0);
+      setTxHash('');
+      setWithdrawAddress('');
   };
 
   const handleTransaction = async () => {
@@ -119,28 +149,44 @@ const WalletPage: React.FC = () => {
 
     try {
         const endpoint = action === 'DEPOSIT' ? 'deposit' : 'withdraw';
+        const payload: any = { 
+            amount, 
+            currency: asset, 
+            type: 'CRYPTO'
+        };
+
+        if (action === 'DEPOSIT') {
+            payload.chain = selectedChain;
+            payload.txHash = txHash;
+        } else {
+            payload.address = withdrawAddress;
+        }
+
         const res = await fetch(`${API_BASE_URL}/wallet/${endpoint}`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}` 
             },
-            body: JSON.stringify({ amount, currency: asset, type: asset === 'USD' ? 'FIAT' : 'CRYPTO' })
+            body: JSON.stringify(payload)
         });
         
         const data = await res.json();
 
-        if (action === 'WITHDRAWAL' && data.status === 'PENDING_APPROVAL') {
-            setWithdrawalMessage(data.message);
+        if (!res.ok) {
+            setWithdrawalMessage(data.message || 'Transaction failed');
         } else {
-            await fetchWallet();
-            await fetchLogs();
-            setAction(null);
-            setAmount(0);
+            if (data.status === 'PENDING_APPROVAL' || action === 'DEPOSIT') {
+                setWithdrawalMessage(data.message);
+            } else {
+                await fetchWallet();
+                await fetchLogs();
+                setAction(null);
+            }
         }
     } catch (e) {
-        console.warn('Backend unavailable, simulating transaction');
-        setAction(null);
+        console.warn('Backend unavailable');
+        setWithdrawalMessage('Network error');
     } finally {
         setLoading(false);
     }
@@ -292,41 +338,61 @@ const WalletPage: React.FC = () => {
                 
                 <div className="bg-navy-900 border border-white/5 p-4 rounded text-xs text-slate-400">
                    <h4 className="text-white font-medium mb-2">Security Notice</h4>
-                   <p>All financial logs are immutable and stored on a secured, dedicated ledger. Withdrawals exceeding $5,000 require manual admin approval.</p>
+                   <p>All financial logs are immutable. Deposits require block confirmation and admin approval.</p>
                 </div>
             </div>
         </div>
 
         {/* Action Modal */}
         {action && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-900/80 backdrop-blur-sm">
-                <div className="bg-navy-800 rounded-lg p-6 w-full max-w-md border border-white/10">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-900/80 backdrop-blur-sm animate-fade-in">
+                <div className="bg-navy-800 rounded-lg p-6 w-full max-w-md border border-white/10 shadow-2xl">
                     <h3 className="text-xl text-white font-serif mb-4">{action === 'DEPOSIT' ? 'Deposit Funds' : 'Withdraw Funds'}</h3>
                     
                     {withdrawalMessage ? (
                         <div className="text-center py-6">
                             <Lock className="w-16 h-16 text-rose-500 mx-auto mb-4" />
-                            <h4 className="text-lg font-medium text-white mb-2">Request Queued</h4>
+                            <h4 className="text-lg font-medium text-white mb-2">Request Status</h4>
                             <p className="text-slate-400 text-sm mb-6">{withdrawalMessage}</p>
                             <button onClick={() => { setAction(null); setAmount(0); setWithdrawalMessage(''); fetchLogs(); fetchWallet(); }} className="w-full bg-navy-700 hover:bg-navy-600 text-white py-2 rounded">Close</button>
                         </div>
                     ) : (
                         <>
                             <div className="mb-4">
-                                <label className="block text-sm text-slate-400 mb-1">Asset Type</label>
+                                <label className="block text-sm text-slate-400 mb-1">Currency</label>
                                 <select 
                                     value={asset} 
                                     onChange={(e) => setAsset(e.target.value)}
                                     className="w-full bg-navy-900 border border-white/10 rounded p-2 text-white"
                                 >
-                                    <option value="USD">USD (Fiat)</option>
-                                    <option value="BTC">Bitcoin (BTC)</option>
-                                    <option value="ETH">Ethereum (ETH)</option>
+                                    <option value="USD">USD (Stablecoin Equivalent)</option>
                                 </select>
                             </div>
 
-                            <div className="mb-6">
-                                <label className="block text-sm text-slate-400 mb-1">Amount {asset === 'USD' ? '(USD)' : ''}</label>
+                            {action === 'DEPOSIT' && (
+                                <div className="mb-4">
+                                    <label className="block text-sm text-slate-400 mb-1">Network / Chain</label>
+                                    <select 
+                                        value={selectedChain} 
+                                        onChange={(e) => setSelectedChain(e.target.value)}
+                                        className="w-full bg-navy-900 border border-white/10 rounded p-2 text-white"
+                                    >
+                                        {Object.keys(depositAddresses).map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                    
+                                    <div className="mt-4 p-4 bg-navy-900 border border-white/10 rounded">
+                                        <p className="text-xs text-slate-400 mb-2">Send funds to this address:</p>
+                                        <div className="flex items-center justify-between bg-black/20 p-2 rounded border border-white/5 mb-2">
+                                            <code className="text-xs text-gold-500 font-mono break-all">{depositAddresses[selectedChain]}</code>
+                                            <button onClick={() => navigator.clipboard.writeText(depositAddresses[selectedChain])} className="text-slate-400 hover:text-white"><Copy size={14} /></button>
+                                        </div>
+                                        <p className="text-[10px] text-amber-500 flex items-center gap-1"><AlertCircle size={10} /> Ensure you send only supported assets on {selectedChain} network.</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="mb-4">
+                                <label className="block text-sm text-slate-400 mb-1">Amount</label>
                                 <input 
                                     type="number" 
                                     value={amount}
@@ -336,9 +402,36 @@ const WalletPage: React.FC = () => {
                                 />
                             </div>
 
+                            {action === 'DEPOSIT' ? (
+                                <div className="mb-6">
+                                    <label className="block text-sm text-slate-400 mb-1">Transaction Hash (TxID)</label>
+                                    <input 
+                                        type="text" 
+                                        value={txHash}
+                                        onChange={(e) => setTxHash(e.target.value)}
+                                        className="w-full bg-navy-900 border border-white/10 rounded p-2 text-white text-xs font-mono"
+                                        placeholder="Paste transaction hash here..."
+                                    />
+                                    <p className="text-[10px] text-slate-500 mt-1">Required for admin verification.</p>
+                                </div>
+                            ) : (
+                                <div className="mb-6">
+                                    <label className="block text-sm text-slate-400 mb-1">Destination Address</label>
+                                    <input 
+                                        type="text" 
+                                        value={withdrawAddress}
+                                        onChange={(e) => setWithdrawAddress(e.target.value)}
+                                        className="w-full bg-navy-900 border border-white/10 rounded p-2 text-white text-xs font-mono"
+                                        placeholder="Your crypto wallet address..."
+                                    />
+                                </div>
+                            )}
+
                             <div className="flex gap-3">
                                 <button onClick={() => setAction(null)} className="flex-1 py-2 text-slate-300 hover:text-white transition-colors">Cancel</button>
-                                <button onClick={handleTransaction} className="flex-1 bg-gold-600 hover:bg-gold-500 text-white py-2 rounded-sm">Confirm</button>
+                                <button onClick={handleTransaction} disabled={!amount || (action === 'DEPOSIT' && !txHash) || (action === 'WITHDRAWAL' && !withdrawAddress)} className="flex-1 bg-gold-600 hover:bg-gold-500 text-white py-2 rounded-sm disabled:opacity-50">
+                                    {action === 'DEPOSIT' ? 'Submit Claim' : 'Request Withdraw'}
+                                </button>
                             </div>
                         </>
                     )}

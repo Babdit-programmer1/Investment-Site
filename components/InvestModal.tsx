@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Investment } from '../types';
-import { X, ShieldCheck, CreditCard, Loader2, Wallet, Coins, Lock, FileText, CheckSquare } from 'lucide-react';
+import { X, ShieldCheck, Wallet, Loader2, FileText, CheckSquare, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../src/config';
@@ -15,7 +16,6 @@ const InvestModal: React.FC<InvestModalProps> = ({ investment, onClose }) => {
   const navigate = useNavigate();
   const [step, setStep] = useState<'DETAILS' | 'LEGAL' | 'PAYMENT'>('DETAILS');
   const [amount, setAmount] = useState<number>(investment.minInvestment);
-  const [paymentMethod, setPaymentMethod] = useState<'CARD' | 'WALLET'>('CARD');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [legalAgreed, setLegalAgreed] = useState({
@@ -29,32 +29,12 @@ const InvestModal: React.FC<InvestModalProps> = ({ investment, onClose }) => {
   const processingFee = amount * feePercentage;
   const total = amount + processingFee;
 
-  // KYC Gating
-  if (user?.kycStatus !== 'APPROVED') {
-     return (
-       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-900/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-navy-800 rounded-lg shadow-2xl border border-white/10 w-full max-w-md p-8 text-center">
-             <div className="w-16 h-16 bg-navy-900 rounded-full flex items-center justify-center mx-auto mb-6 border border-white/10">
-                <Lock className="text-amber-500 w-8 h-8" />
-             </div>
-             <h3 className="text-2xl font-serif text-white mb-2">Verification Required</h3>
-             <p className="text-slate-400 mb-6">To access institutional-grade assets, please complete your identity verification.</p>
-             <div className="space-y-3">
-                <button onClick={() => navigate('/kyc')} className="w-full bg-gold-600 hover:bg-gold-500 text-white py-3 rounded font-medium">Verify Identity</button>
-                <button onClick={onClose} className="w-full text-slate-400 hover:text-white text-sm">Cancel</button>
-             </div>
-          </div>
-       </div>
-     );
-  }
-
   const handleInvest = async () => {
     setLoading(true);
     setError('');
 
     try {
-      const gateway = paymentMethod === 'WALLET' ? 'WALLET' : 'SIMULATOR';
-      
+      // Crypto-Only: No gateway parameter needed, defaults to internal wallet
       const res = await fetch(`${API_BASE_URL}/payments/initiate`, {
         method: 'POST',
         headers: {
@@ -63,38 +43,25 @@ const InvestModal: React.FC<InvestModalProps> = ({ investment, onClose }) => {
         },
         body: JSON.stringify({
           assetId: investment.id,
-          amount: amount,
-          gateway
+          amount: amount
         })
       });
 
-      // If backend is down, simulate success locally
-      if (!res.ok && res.status !== 400 && res.status !== 404) {
-          console.warn("Backend unavailable, simulating success");
-          setTimeout(() => {
-              onClose();
-              navigate('/dashboard');
-          }, 1500);
-          return;
+      const data = await res.json();
+      
+      if (!res.ok) {
+          throw new Error(data.message || 'Investment failed');
       }
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Investment failed');
-
-      // If wallet payment, success is instant, redirect to dashboard
-      if (paymentMethod === 'WALLET') {
-         navigate('/dashboard');
-      } else {
-         // Redirect to gateway (or simulator)
-         window.location.href = data.authorizationUrl;
+      // Success
+      if (data.success) {
+         navigate('/dashboard?status=success');
+         onClose();
       }
     } catch (err: any) {
-        // Fallback for preview mode if fetch throws (network error)
-        console.warn("Investment simulation fallback active due to network error");
-        setTimeout(() => {
-            onClose();
-            navigate('/dashboard');
-        }, 1500);
+        setError(err.message || "An unexpected error occurred.");
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -183,23 +150,16 @@ const InvestModal: React.FC<InvestModalProps> = ({ investment, onClose }) => {
 
   const renderPayment = () => (
       <div className="space-y-4 mb-6">
-         {/* Payment Method Selector */}
-         <div>
-            <label className="block text-sm text-slate-400 mb-2">Payment Method</label>
-            <div className="grid grid-cols-2 gap-3">
-                <button 
-                   onClick={() => setPaymentMethod('CARD')}
-                   className={`flex items-center justify-center p-3 border rounded transition-all ${paymentMethod === 'CARD' ? 'border-gold-500 bg-gold-600/10 text-white' : 'border-white/10 bg-navy-900 text-slate-400 hover:bg-navy-950'}`}
-                >
-                    <CreditCard className="w-4 h-4 mr-2" /> Card / Bank
-                </button>
-                <button 
-                   onClick={() => setPaymentMethod('WALLET')}
-                   className={`flex items-center justify-center p-3 border rounded transition-all ${paymentMethod === 'WALLET' ? 'border-gold-500 bg-gold-600/10 text-white' : 'border-white/10 bg-navy-900 text-slate-400 hover:bg-navy-950'}`}
-                >
-                    <Wallet className="w-4 h-4 mr-2" /> My Wallet
-                </button>
-            </div>
+         <div className="bg-navy-900 border border-white/10 rounded p-4 flex items-start gap-4">
+             <div className="p-3 bg-gold-600/20 rounded-full text-gold-500">
+                 <Wallet size={24} />
+             </div>
+             <div>
+                 <h4 className="text-white font-medium">Pay from Wallet</h4>
+                 <p className="text-sm text-slate-400 mt-1">
+                     Funds will be deducted from your available balance. Please ensure you have sufficient deposits.
+                 </p>
+             </div>
          </div>
 
          <div className="bg-emerald-900/20 border border-emerald-500/20 p-3 rounded mb-6 flex gap-3">
@@ -214,7 +174,7 @@ const InvestModal: React.FC<InvestModalProps> = ({ investment, onClose }) => {
             disabled={loading}
             className="w-full bg-gold-600 hover:bg-gold-500 text-white font-serif py-3 rounded shadow-lg transition-all disabled:opacity-50 flex justify-center items-center gap-2"
           >
-            {loading ? <Loader2 className="animate-spin" /> : paymentMethod === 'CARD' ? <><CreditCard size={18} /> Pay with Card</> : <><Wallet size={18} /> Pay from Wallet</>}
+            {loading ? <Loader2 className="animate-spin" /> : 'Confirm Investment'}
           </button>
       </div>
   );
@@ -248,8 +208,8 @@ const InvestModal: React.FC<InvestModalProps> = ({ investment, onClose }) => {
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm rounded">
-              {error}
+            <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm rounded flex items-center gap-2">
+              <AlertTriangle size={16} /> {error}
             </div>
           )}
 

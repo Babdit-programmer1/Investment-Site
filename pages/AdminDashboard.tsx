@@ -1,15 +1,21 @@
+
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Users, Briefcase, DollarSign, Activity, CheckCircle, XCircle, Plus, Shield, Lock, Server, Key, AlertTriangle, FileText, Scale, Siren, Cpu, Gauge, Globe, Terminal, Bell } from 'lucide-react';
+import { Users, Briefcase, DollarSign, Activity, CheckCircle, XCircle, Plus, Shield, Lock, Server, Key, AlertTriangle, FileText, Scale, Siren, Cpu, Gauge, Globe, Terminal, Bell, Download, ArrowUpRight, ArrowDownLeft, Wallet, X, Loader2, List, Search } from 'lucide-react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../src/config';
 
-// MOCK DATA
+// MOCK DATA FOR FALLBACK
 const MOCK_STATS = {
   totalUsers: 142,
   totalAssets: 15,
   totalAum: 45000000,
   activeInvestments: 2,
+  pendingDeposits: 1,
+  pendingWithdrawals: 3,
+  platformInflow: 2500000,
+  platformOutflow: 500000,
+  platformProfit: 2000000,
   recentActivity: []
 };
 
@@ -18,30 +24,33 @@ const MOCK_INVESTORS = [
   { id: '2', fullName: 'Sarah Connor', email: 's.connor@example.com', investorType: 'High Net Worth', kycStatus: 'PENDING' }
 ];
 
-const MOCK_APPROVALS = [
-  { 
-    id: '101', 
-    user: { fullName: 'Sarah Connor', email: 's.connor@example.com' }, 
-    asset: { title: 'The Kensington Estate' }, 
-    amount: 150000,
-    status: 'ESCROWED'
-  }
-];
-
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'assets' | 'investors' | 'approvals' | 'treasury' | 'risk' | 'performance' | 'diagnostics'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'assets' | 'investors' | 'approvals' | 'deposits' | 'withdrawals' | 'logs' | 'treasury' | 'risk' | 'diagnostics'>('overview');
+  
+  // Data States
   const [stats, setStats] = useState<any>(null);
   const [investors, setInvestors] = useState<any[]>([]);
   const [approvals, setApprovals] = useState<any[]>([]);
+  const [deposits, setDeposits] = useState<any[]>([]);
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [treasury, setTreasury] = useState<any>(null);
   const [multisigRequests, setMultisigRequests] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
-  const [auditLogs, setAuditLogs] = useState<any>(null);
   const [metrics, setMetrics] = useState<any>(null);
   
-  // Diagnostics State
+  // Logs State
+  const [systemLogs, setSystemLogs] = useState<any[]>([]);
+  const [logsFilter, setLogsFilter] = useState({ actionType: '', adminId: '' });
+  const [logsLoading, setLogsLoading] = useState(false);
+
+  // Wallet Control Modal State
+  const [walletModal, setWalletModal] = useState<{ isOpen: boolean, userId: string | null, userName: string }>({ isOpen: false, userId: null, userName: '' });
+  const [walletForm, setWalletForm] = useState({ type: 'CREDIT', amount: '', reason: '' });
+  const [walletLoading, setWalletLoading] = useState(false);
+  
+  // System State
   const [diagResults, setDiagResults] = useState<any>(null);
   const [runningDiag, setRunningDiag] = useState(false);
   const [notifStatus, setNotifStatus] = useState('');
@@ -57,10 +66,14 @@ const AdminDashboard: React.FC = () => {
     fetchStats();
     if (activeTab === 'investors') fetchInvestors();
     if (activeTab === 'approvals') fetchApprovals();
+    if (activeTab === 'deposits') fetchDeposits();
+    if (activeTab === 'withdrawals') fetchWithdrawals();
     if (activeTab === 'treasury') fetchTreasury();
     if (activeTab === 'risk') fetchRisk();
-    if (activeTab === 'performance') fetchMetrics();
+    if (activeTab === 'logs') fetchSystemLogs();
   }, [activeTab]);
+
+  // --- FETCHERS ---
 
   const fetchStats = async () => {
     try {
@@ -86,8 +99,31 @@ const AdminDashboard: React.FC = () => {
       if(!res.ok) throw new Error("API Error");
       const data = await res.json();
       setApprovals(data);
-    } catch (e) { setApprovals(MOCK_APPROVALS); }
+    } catch (e) { setApprovals([]); }
   };
+
+  const fetchDeposits = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/deposits/pending`, { headers: { Authorization: `Bearer ${token}` } });
+      if(!res.ok) throw new Error("API Error");
+      const data = await res.json();
+      setDeposits(data);
+    } catch (e) { setDeposits([]); }
+  };
+
+  const fetchWithdrawals = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/withdrawals/pending`, { headers: { Authorization: `Bearer ${token}` } });
+      if(!res.ok) throw new Error("API Error");
+      const data = await res.json();
+      setWithdrawalList(data);
+    } catch (e) { 
+        // Mock withdrawals for preview
+        setWithdrawalList([{ id: 'w1', user: { fullName: 'John Doe', email: 'john@example.com' }, amount: 25000, currency: 'USD', reference: 'WTH-8821', createdAt: new Date().toISOString() }]);
+    }
+  };
+  
+  const setWithdrawalList = (data: any) => setWithdrawals(data);
 
   const fetchTreasury = async () => {
     try {
@@ -95,10 +131,8 @@ const AdminDashboard: React.FC = () => {
             fetch(`${API_BASE_URL}/admin/treasury`, { headers: { Authorization: `Bearer ${token}` } }),
             fetch(`${API_BASE_URL}/admin/multisig`, { headers: { Authorization: `Bearer ${token}` } })
         ]);
-        const tData = await tRes.json();
-        const mData = await mRes.json();
-        setTreasury(tData);
-        setMultisigRequests(mData);
+        setTreasury(await tRes.json());
+        setMultisigRequests(await mRes.json());
     } catch (e) {
         setTreasury({ hotWallet: 50000, warmWallet: 150000, coldWallet: 1200000, reserveRatio: 1 });
         setMultisigRequests([]);
@@ -107,67 +141,31 @@ const AdminDashboard: React.FC = () => {
 
   const fetchRisk = async () => {
       try {
-          const [aRes, audRes] = await Promise.all([
-              fetch(`${API_BASE_URL}/admin/compliance/alerts`, { headers: { Authorization: `Bearer ${token}` } }),
-              fetch(`${API_BASE_URL}/admin/compliance/audit`, { headers: { Authorization: `Bearer ${token}` } })
-          ]);
-          setAlerts(await aRes.json());
-          setAuditLogs(await audRes.json());
-      } catch (e) {
-          console.warn("Compliance data fetch failed");
-      }
+          const res = await fetch(`${API_BASE_URL}/admin/compliance/alerts`, { headers: { Authorization: `Bearer ${token}` } });
+          setAlerts(await res.json());
+      } catch (e) {}
   };
 
-  const fetchMetrics = async () => {
+  const fetchSystemLogs = async () => {
+      setLogsLoading(true);
       try {
-          // Note: metrics endpoint is usually public in this demo, but wrapped for admin view
-          const res = await fetch(`${API_BASE_URL.replace('/api/v1', '')}/metrics`);
-          setMetrics(await res.json());
+          const params = new URLSearchParams();
+          if (logsFilter.actionType) params.append('actionType', logsFilter.actionType);
+          if (logsFilter.adminId) params.append('adminId', logsFilter.adminId);
+          
+          const res = await fetch(`${API_BASE_URL}/admin/logs?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` } });
+          if(res.ok) {
+              const result = await res.json();
+              setSystemLogs(result.data || []);
+          }
       } catch (e) {
-          setMetrics({ uptime: 3600, requests: 150, errors: 0, avgLatency: 45, errorRate: "0.0000" });
-      }
-  };
-
-  const runSystemDiagnostics = async () => {
-      setRunningDiag(true);
-      setDiagResults(null);
-      try {
-          const res = await fetch(`${API_BASE_URL}/admin/diagnostics/run`, { headers: { Authorization: `Bearer ${token}` } });
-          const data = await res.json();
-          setTimeout(() => setDiagResults(data), 800); // Small delay for UX
-      } catch (e) {
-          setDiagResults({ error: 'Failed to execute diagnostics suite.' });
+          console.warn("Failed to fetch logs");
       } finally {
-          setTimeout(() => setRunningDiag(false), 800);
+          setLogsLoading(false);
       }
   };
 
-  const sendTestNotification = async () => {
-      setNotifStatus('Sending...');
-      try {
-          const res = await fetch(`${API_BASE_URL}/admin/diagnostics/notify`, { 
-              method: 'POST',
-              headers: { Authorization: `Bearer ${token}` } 
-          });
-          if (res.ok) setNotifStatus('Sent successfully!');
-          else setNotifStatus('Failed to send.');
-      } catch (e) {
-          setNotifStatus('Network error.');
-      }
-      setTimeout(() => setNotifStatus(''), 3000);
-  };
-
-  const verifyUser = async (id: string) => {
-    try {
-      await fetch(`${API_BASE_URL}/admin/investors/${id}/verify`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      fetchInvestors();
-    } catch (e) {
-      alert("Verification simulated (API unavailable)");
-    }
-  };
+  // --- ACTIONS ---
 
   const handleApproval = async (id: string, action: 'approve' | 'refund') => {
     try {
@@ -177,236 +175,228 @@ const AdminDashboard: React.FC = () => {
       });
       fetchApprovals();
       fetchStats();
-    } catch (e) {
-      alert(`Action '${action}' simulated (API unavailable)`);
-      setApprovals(prev => prev.filter(a => a.id !== id));
-    }
+    } catch (e) { alert("Action simulated"); }
   };
 
-  const approveMultisig = async (refId: string) => {
+  const handleDepositAction = async (id: string, action: 'approve' | 'reject') => {
       try {
-          await fetch(`${API_BASE_URL}/admin/multisig/${refId}/approve`, {
+          await fetch(`${API_BASE_URL}/admin/deposits/${id}/${action}`, {
               method: 'POST',
               headers: { Authorization: `Bearer ${token}` }
           });
-          fetchTreasury();
+          fetchDeposits();
+          fetchStats();
+      } catch (e) { alert("Deposit action simulated"); }
+  };
+
+  const handleWithdrawalAction = async (id: string, action: 'approve' | 'reject') => {
+      try {
+          await fetch(`${API_BASE_URL}/admin/withdrawals/${id}/${action}`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` }
+          });
+          fetchWithdrawals();
+          fetchStats();
+      } catch (e) { alert("Withdrawal action simulated"); }
+  };
+
+  const verifyUser = async (id: string) => {
+    try {
+      await fetch(`${API_BASE_URL}/admin/investors/${id}/verify`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
+      fetchInvestors();
+    } catch (e) {}
+  };
+
+  // --- WALLET CONTROL ---
+
+  const openWalletModal = (user: any) => {
+      setWalletModal({ isOpen: true, userId: user.id, userName: user.fullName });
+      setWalletForm({ type: 'CREDIT', amount: '', reason: '' });
+  };
+
+  const submitWalletAdjustment = async () => {
+      if (!walletForm.amount || !walletForm.reason || !walletModal.userId) return;
+      setWalletLoading(true);
+      
+      try {
+          const endpoint = walletForm.type === 'CREDIT' ? 'credit' : 'debit';
+          const res = await fetch(`${API_BASE_URL}/admin/wallets/${walletModal.userId}/${endpoint}`, {
+              method: 'POST',
+              headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}` 
+              },
+              body: JSON.stringify({
+                  amount: parseFloat(walletForm.amount),
+                  reason: walletForm.reason
+              })
+          });
+          
+          if (!res.ok) throw new Error('Action failed');
+          
+          alert(`Successfully ${walletForm.type === 'CREDIT' ? 'credited' : 'debited'} wallet.`);
+          setWalletModal({ isOpen: false, userId: null, userName: '' });
+          fetchStats(); // Refresh totals
       } catch (e) {
-          alert('Multisig approval simulated');
-          setMultisigRequests(prev => prev.filter(r => r.referenceId !== refId));
+          alert('Failed to adjust wallet. Ensure backend is reachable.');
+      } finally {
+          setWalletLoading(false);
       }
   };
 
-  const formatUptime = (seconds: number) => {
-      const h = Math.floor(seconds / 3600);
-      const m = Math.floor((seconds % 3600) / 60);
-      return `${h}h ${m}m`;
+  // --- DIAGNOSTICS ---
+
+  const runSystemDiagnostics = async () => {
+      setRunningDiag(true);
+      try {
+          const res = await fetch(`${API_BASE_URL}/admin/diagnostics/run`, { headers: { Authorization: `Bearer ${token}` } });
+          setDiagResults(await res.json());
+      } catch (e) { setDiagResults({ error: 'Failed' }); }
+      setTimeout(() => setRunningDiag(false), 800);
   };
 
   return (
     <div className="pt-20 min-h-screen bg-navy-900 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto py-10">
-        <div className="flex justify-between items-center mb-2">
-            <h1 className="text-3xl font-serif text-white">Admin Command Center</h1>
-            <div className="flex items-center gap-2 text-xs text-slate-500 bg-navy-800 px-3 py-1 rounded border border-white/5">
-                <div className={`w-2 h-2 rounded-full animate-pulse ${metrics?.errorRate > 0.05 ? 'bg-rose-500' : 'bg-emerald-500'}`}></div>
-                System Operational
+        
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+                <h1 className="text-3xl font-serif text-white">Admin Command Center</h1>
+                <p className="text-slate-400 text-sm mt-1">Platform Control & Oversight</p>
+            </div>
+            <div className="flex gap-3">
+                <div className="flex items-center gap-2 text-xs text-slate-500 bg-navy-800 px-3 py-1.5 rounded border border-white/5">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    System Active
+                </div>
+                <button 
+                    onClick={() => navigate('/admin/assets/new')}
+                    className="flex items-center gap-2 bg-gold-600 hover:bg-gold-500 text-white px-4 py-2 rounded text-sm font-medium transition-colors"
+                >
+                    <Plus size={16} /> Create Asset
+                </button>
             </div>
         </div>
-        <p className="text-slate-400 mb-8">System Overview & Management</p>
 
-        {/* Tabs */}
-        <div className="flex space-x-4 mb-8 border-b border-white/10 overflow-x-auto">
-          {['overview', 'assets', 'investors', 'approvals', 'treasury', 'risk', 'performance', 'diagnostics'].map(tab => (
+        {/* Navigation Tabs */}
+        <div className="flex space-x-2 mb-8 border-b border-white/10 overflow-x-auto pb-1 no-scrollbar">
+          {['overview', 'investors', 'approvals', 'deposits', 'withdrawals', 'logs', 'treasury', 'risk', 'diagnostics'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
-              className={`pb-3 text-sm font-medium capitalize transition-colors whitespace-nowrap ${
-                activeTab === tab ? 'text-gold-500 border-b-2 border-gold-500' : 'text-slate-400 hover:text-white'
+              className={`px-4 py-2 text-sm font-medium capitalize transition-all whitespace-nowrap rounded-t-lg ${
+                activeTab === tab 
+                ? 'bg-navy-800 text-gold-500 border-t border-x border-white/10' 
+                : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
             >
-              {tab === 'approvals' && stats?.activeInvestments > 0 ? (
-                <span className="flex items-center gap-2">
-                  Approvals 
-                  <span className="bg-amber-500 text-navy-900 px-1.5 py-0.5 rounded-full text-xs font-bold">{stats.activeInvestments}</span>
-                </span>
-              ) : tab === 'treasury' && multisigRequests.length > 0 ? (
-                <span className="flex items-center gap-2">
-                  Treasury 
-                  <span className="bg-rose-500 text-white px-1.5 py-0.5 rounded-full text-xs font-bold">{multisigRequests.length}</span>
-                </span>
-              ) : tab === 'risk' && alerts.length > 0 ? (
-                <span className="flex items-center gap-2">
-                  Risk 
-                  <span className="bg-red-500 text-white px-1.5 py-0.5 rounded-full text-xs font-bold animate-pulse">!</span>
-                </span>
+              {tab === 'approvals' && (stats?.activeInvestments > 0) ? (
+                <span className="flex items-center gap-2">Approvals <span className="bg-amber-500 text-navy-900 px-1.5 py-0.5 rounded-full text-[10px] font-bold">{stats.activeInvestments}</span></span>
+              ) : tab === 'deposits' && (stats?.pendingDeposits > 0) ? (
+                <span className="flex items-center gap-2">Deposits <span className="bg-blue-500 text-white px-1.5 py-0.5 rounded-full text-[10px] font-bold">{stats.pendingDeposits}</span></span>
+              ) : tab === 'withdrawals' && (stats?.pendingWithdrawals > 0) ? (
+                <span className="flex items-center gap-2">Withdrawals <span className="bg-rose-500 text-white px-1.5 py-0.5 rounded-full text-[10px] font-bold">{stats.pendingWithdrawals}</span></span>
               ) : tab}
             </button>
           ))}
         </div>
 
+        {/* TAB CONTENT */}
+        
+        {/* OVERVIEW */}
         {activeTab === 'overview' && stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            {[
-              { label: 'Total Users', val: stats.totalUsers, icon: <Users /> },
-              { label: 'Total Assets', val: stats.totalAssets, icon: <Briefcase /> },
-              { label: 'Est. AUM', val: `$${stats.totalAum.toLocaleString()}`, icon: <DollarSign /> },
-              { label: 'Pending Approvals', val: stats.activeInvestments, icon: <Activity /> }
-            ].map((s, i) => (
-              <div key={i} className="bg-navy-800 p-6 rounded border border-white/5">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="text-gold-500">{s.icon}</div>
-                </div>
-                <div className="text-2xl font-serif text-white">{s.val}</div>
-                <div className="text-xs text-slate-500 uppercase tracking-wide">{s.label}</div>
+          <div className="animate-fade-in">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                {[
+                  { label: 'Total Users', val: stats.totalUsers, icon: <Users /> },
+                  { label: 'Total Assets', val: stats.totalAssets, icon: <Briefcase /> },
+                  { label: 'Est. AUM', val: `$${stats.totalAum.toLocaleString()}`, icon: <DollarSign /> },
+                  { label: 'Pending Items', val: (stats.pendingDeposits || 0) + (stats.pendingWithdrawals || 0), icon: <Activity /> }
+                ].map((s, i) => (
+                  <div key={i} className="bg-navy-800 p-6 rounded border border-white/5">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="text-gold-500">{s.icon}</div>
+                    </div>
+                    <div className="text-2xl font-serif text-white">{s.val}</div>
+                    <div className="text-xs text-slate-500 uppercase tracking-wide">{s.label}</div>
+                  </div>
+                ))}
               </div>
-            ))}
+
+              {/* Financial Health Row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  <div className="bg-navy-800 p-6 rounded border border-emerald-500/20">
+                      <div className="flex items-center gap-3 mb-2">
+                          <ArrowDownLeft className="text-emerald-500" />
+                          <h3 className="text-sm font-medium text-emerald-400">Total Inflow</h3>
+                      </div>
+                      <p className="text-2xl text-white font-mono">${stats.platformInflow?.toLocaleString() || '0'}</p>
+                      <p className="text-xs text-slate-500 mt-1">Approved Deposits</p>
+                  </div>
+                  <div className="bg-navy-800 p-6 rounded border border-rose-500/20">
+                      <div className="flex items-center gap-3 mb-2">
+                          <ArrowUpRight className="text-rose-500" />
+                          <h3 className="text-sm font-medium text-rose-400">Total Outflow</h3>
+                      </div>
+                      <p className="text-2xl text-white font-mono">${stats.platformOutflow?.toLocaleString() || '0'}</p>
+                      <p className="text-xs text-slate-500 mt-1">Approved Withdrawals</p>
+                  </div>
+                  <div className="bg-navy-800 p-6 rounded border border-gold-500/20">
+                      <div className="flex items-center gap-3 mb-2">
+                          <DollarSign className="text-gold-500" />
+                          <h3 className="text-sm font-medium text-gold-400">Net Platform Profit</h3>
+                      </div>
+                      <p className="text-2xl text-white font-mono">${stats.platformProfit?.toLocaleString() || '0'}</p>
+                      <p className="text-xs text-slate-500 mt-1">Inflow - Outflow</p>
+                  </div>
+              </div>
+
+              <div className="bg-navy-800 p-8 rounded border border-white/5 text-center">
+                  <Activity className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                  <h3 className="text-white font-medium">Activity Feed</h3>
+                  <p className="text-slate-400 text-sm">Real-time system logs will appear here.</p>
+              </div>
           </div>
         )}
 
-        {/* Diagnostics Tab */}
-        {activeTab === 'diagnostics' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-navy-800 border border-white/5 rounded-lg p-6">
-                    <h3 className="text-white font-medium mb-4 flex items-center gap-2"><Terminal size={18} className="text-gold-500" /> System Health Check</h3>
-                    <p className="text-sm text-slate-400 mb-6">Executes a deep scan of the database connection, API latency, and environment configuration.</p>
-                    
-                    <button 
-                        onClick={runSystemDiagnostics} 
-                        disabled={runningDiag}
-                        className="bg-gold-600 hover:bg-gold-500 text-white px-6 py-2 rounded text-sm font-medium disabled:opacity-50 flex items-center gap-2"
-                    >
-                        {runningDiag ? 'Running Diagnostics...' : 'Run System Check'}
-                    </button>
-
-                    {diagResults && (
-                        <div className="mt-6 bg-navy-950 p-4 rounded border border-white/10 font-mono text-xs text-slate-300">
-                            <pre>{JSON.stringify(diagResults, null, 2)}</pre>
-                        </div>
-                    )}
-                </div>
-
-                <div className="bg-navy-800 border border-white/5 rounded-lg p-6">
-                    <h3 className="text-white font-medium mb-4 flex items-center gap-2"><Bell size={18} className="text-gold-500" /> Notification Pipeline</h3>
-                    <p className="text-sm text-slate-400 mb-6">Triggers a test notification to verify the real-time alert system (DB Write + Client Fetch).</p>
-                    
-                    <button 
-                        onClick={sendTestNotification}
-                        className="bg-navy-700 hover:bg-navy-600 border border-white/10 text-white px-6 py-2 rounded text-sm font-medium flex items-center gap-2"
-                    >
-                        Trigger Test Alert
-                    </button>
-                    
-                    {notifStatus && (
-                        <p className={`mt-4 text-sm font-medium ${notifStatus.includes('success') ? 'text-emerald-400' : 'text-slate-400'}`}>
-                            {notifStatus}
-                        </p>
-                    )}
-                </div>
-            </div>
-        )}
-
-        {activeTab === 'performance' && metrics && (
-            <div className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div className="bg-navy-800 p-6 rounded border border-white/5 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-10"><Activity size={64} /></div>
-                        <p className="text-xs text-slate-400 uppercase">System Uptime</p>
-                        <p className="text-3xl font-mono text-white mt-1">{formatUptime(metrics.uptime)}</p>
-                        <p className="text-xs text-emerald-500 mt-2">Stable</p>
-                    </div>
-                    <div className="bg-navy-800 p-6 rounded border border-white/5 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-10"><Gauge size={64} /></div>
-                        <p className="text-xs text-slate-400 uppercase">Avg Latency</p>
-                        <p className="text-3xl font-mono text-white mt-1">{metrics.avgLatency.toFixed(0)}ms</p>
-                        <p className="text-xs text-slate-500 mt-2">Target: &lt; 200ms</p>
-                    </div>
-                    <div className="bg-navy-800 p-6 rounded border border-white/5 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-10"><Server size={64} /></div>
-                        <p className="text-xs text-slate-400 uppercase">Total Requests</p>
-                        <p className="text-3xl font-mono text-white mt-1">{metrics.requests}</p>
-                        <p className="text-xs text-slate-500 mt-2">Since Startup</p>
-                    </div>
-                    <div className={`bg-navy-800 p-6 rounded border ${Number(metrics.errorRate) > 0.01 ? 'border-rose-500/50' : 'border-white/5'} relative overflow-hidden`}>
-                        <div className="absolute top-0 right-0 p-4 opacity-10"><AlertTriangle size={64} /></div>
-                        <p className="text-xs text-slate-400 uppercase">Error Rate</p>
-                        <p className={`text-3xl font-mono mt-1 ${Number(metrics.errorRate) > 0.01 ? 'text-rose-500' : 'text-emerald-500'}`}>{Number(metrics.errorRate) * 100}%</p>
-                        <p className="text-xs text-slate-500 mt-2">Target: &lt; 1%</p>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-navy-800 rounded border border-white/5 p-6">
-                        <h3 className="text-white font-medium mb-4 flex items-center gap-2"><Cpu size={16} className="text-gold-500" /> Infrastructure Health</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <div className="flex justify-between text-xs text-slate-400 mb-1"><span>CPU Usage</span> <span>12%</span></div>
-                                <div className="h-2 bg-navy-900 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 w-[12%]"></div></div>
-                            </div>
-                            <div>
-                                <div className="flex justify-between text-xs text-slate-400 mb-1"><span>Memory Usage</span> <span>34%</span></div>
-                                <div className="h-2 bg-navy-900 rounded-full overflow-hidden"><div className="h-full bg-blue-500 w-[34%]"></div></div>
-                            </div>
-                            <div>
-                                <div className="flex justify-between text-xs text-slate-400 mb-1"><span>Database Pool</span> <span>5/20 Conn</span></div>
-                                <div className="h-2 bg-navy-900 rounded-full overflow-hidden"><div className="h-full bg-purple-500 w-[25%]"></div></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-navy-800 rounded border border-white/5 p-6">
-                        <h3 className="text-white font-medium mb-4 flex items-center gap-2"><Globe size={16} className="text-gold-500" /> Global Latency Check</h3>
-                        <div className="space-y-2">
-                            {[
-                                { region: 'US East (N. Virginia)', ping: '24ms', status: 'Optimal' },
-                                { region: 'EU West (London)', ping: '88ms', status: 'Good' },
-                                { region: 'Asia Pacific (Singapore)', ping: '185ms', status: 'Fair' },
-                                { region: 'SA East (São Paulo)', ping: '145ms', status: 'Fair' }
-                            ].map((loc, i) => (
-                                <div key={i} className="flex justify-between items-center text-sm p-2 bg-navy-900/50 rounded">
-                                    <span className="text-slate-300">{loc.region}</span>
-                                    <div className="flex items-center gap-3">
-                                        <span className="font-mono text-slate-400">{loc.ping}</span>
-                                        <span className={`text-[10px] uppercase font-bold ${loc.status === 'Optimal' ? 'text-emerald-500' : 'text-amber-500'}`}>{loc.status}</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {/* Existing Tabs */}
+        {/* INVESTORS */}
         {activeTab === 'investors' && (
-          <div className="bg-navy-800 rounded border border-white/5 overflow-hidden">
+          <div className="bg-navy-800 rounded border border-white/5 overflow-hidden animate-fade-in">
             <table className="min-w-full divide-y divide-white/10">
               <thead className="bg-navy-950">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">User</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">KYC Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Status</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-slate-400 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {investors.map((inv) => (
-                  <tr key={inv.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                  <tr key={inv.id} className="hover:bg-white/5 transition-colors">
+                    <td className="px-6 py-4">
                       <div className="text-sm font-medium text-white">{inv.fullName}</div>
-                      <div className="text-sm text-slate-500">{inv.email}</div>
+                      <div className="text-xs text-slate-500">{inv.email}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{inv.investorType}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        inv.kycStatus === 'APPROVED' ? 'bg-emerald-900 text-emerald-200' : 'bg-yellow-900 text-yellow-200'
+                    <td className="px-6 py-4 text-sm text-slate-300">{inv.investorType}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase ${
+                        inv.kycStatus === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'
                       }`}>
                         {inv.kycStatus}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-6 py-4 text-right flex justify-end gap-3 items-center">
                       {inv.kycStatus !== 'APPROVED' && (
-                        <button onClick={() => verifyUser(inv.id)} className="text-gold-500 hover:text-gold-400">Verify</button>
+                        <button onClick={() => verifyUser(inv.id)} className="text-xs text-emerald-400 hover:text-emerald-300 border border-emerald-500/30 px-2 py-1 rounded">Verify KYC</button>
                       )}
+                      <button 
+                        onClick={() => openWalletModal(inv)}
+                        className="flex items-center gap-1 text-xs bg-navy-900 hover:bg-navy-950 text-gold-500 px-3 py-1.5 rounded border border-gold-500/20 transition-colors"
+                      >
+                        <Wallet size={12} /> Funds
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -415,42 +405,31 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
+        {/* APPROVALS (INVESTMENTS) */}
         {activeTab === 'approvals' && (
-          <div className="bg-navy-800 rounded border border-white/5 overflow-hidden">
-            {approvals.length === 0 ? (
-               <div className="p-12 text-center text-slate-400">No pending investments found.</div>
-            ) : (
+          <div className="bg-navy-800 rounded border border-white/5 overflow-hidden animate-fade-in">
+            {approvals.length === 0 ? <div className="p-12 text-center text-slate-400">No pending investments.</div> : (
               <table className="min-w-full divide-y divide-white/10">
                 <thead className="bg-navy-950">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Investor</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Asset</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Amount</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Actions</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-400 uppercase">Amount</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-400 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {approvals.map((item) => (
                     <tr key={item.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4">
                         <div className="text-sm font-medium text-white">{item.user?.fullName}</div>
                         <div className="text-xs text-slate-500">{item.user?.email}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{item.asset?.title}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-white">${item.amount.toLocaleString()}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="bg-amber-500/10 text-amber-500 px-2 py-1 rounded-full text-xs font-bold flex items-center w-fit gap-1">
-                          <Shield size={10} /> Escrowed
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-3">
-                        <button onClick={() => handleApproval(item.id, 'approve')} className="text-emerald-400 hover:text-emerald-300 flex items-center gap-1">
-                          <CheckCircle size={16} /> Release Funds
-                        </button>
-                        <button onClick={() => handleApproval(item.id, 'refund')} className="text-rose-400 hover:text-rose-300 flex items-center gap-1">
-                          <XCircle size={16} /> Refund
-                        </button>
+                      <td className="px-6 py-4 text-sm text-slate-300">{item.asset?.title}</td>
+                      <td className="px-6 py-4 text-right text-sm font-bold text-white">${item.amount.toLocaleString()}</td>
+                      <td className="px-6 py-4 text-right flex justify-end gap-2">
+                        <button onClick={() => handleApproval(item.id, 'approve')} className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded hover:bg-emerald-500/20"><CheckCircle size={16}/></button>
+                        <button onClick={() => handleApproval(item.id, 'refund')} className="p-1.5 bg-rose-500/10 text-rose-500 rounded hover:bg-rose-500/20"><XCircle size={16}/></button>
                       </td>
                     </tr>
                   ))}
@@ -460,177 +439,263 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {activeTab === 'treasury' && treasury && (
-            <div className="space-y-8">
-                {/* Vault Visualizer */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-gradient-to-br from-orange-900/40 to-navy-900 border border-orange-500/30 p-6 rounded-lg relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-10"><Activity size={64} /></div>
-                        <h3 className="text-orange-400 font-mono text-sm uppercase tracking-widest mb-1 flex items-center gap-2"><Activity size={14} /> Hot Wallet</h3>
-                        <p className="text-xs text-slate-400 mb-4">Operational Liquidity</p>
-                        <p className="text-3xl font-serif text-white">${treasury.hotWallet.toLocaleString()}</p>
-                        <div className="mt-4 text-xs text-orange-300/60 bg-orange-900/20 px-2 py-1 rounded inline-block">Target: 10%</div>
-                    </div>
+        {/* DEPOSITS */}
+        {activeTab === 'deposits' && (
+          <div className="bg-navy-800 rounded border border-white/5 overflow-hidden animate-fade-in">
+            <div className="p-4 bg-navy-950 border-b border-white/10 flex justify-between items-center">
+                <h3 className="text-white font-medium flex items-center gap-2"><Download size={16} className="text-blue-500" /> Pending Deposits</h3>
+                <span className="text-xs text-slate-500">Validate Transaction Hashes before approving.</span>
+            </div>
+            {deposits.length === 0 ? <div className="p-12 text-center text-slate-400">No pending deposits.</div> : (
+              <table className="min-w-full divide-y divide-white/10">
+                <thead className="bg-navy-900">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">User</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">TxHash</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-400 uppercase">Amount</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-400 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {deposits.map((item) => (
+                    <tr key={item.id}>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-white">{item.user?.fullName}</div>
+                      </td>
+                      <td className="px-6 py-4 text-xs font-mono text-blue-400 truncate max-w-[150px]">{item.metadata?.txHash || 'N/A'}</td>
+                      <td className="px-6 py-4 text-right text-sm font-bold text-emerald-400">+{item.amount.toLocaleString()}</td>
+                      <td className="px-6 py-4 text-right flex justify-end gap-2">
+                        <button onClick={() => handleDepositAction(item.id, 'approve')} className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded">Confirm</button>
+                        <button onClick={() => handleDepositAction(item.id, 'reject')} className="text-xs bg-navy-700 hover:bg-navy-600 text-slate-300 px-3 py-1.5 rounded">Reject</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
 
-                    <div className="bg-gradient-to-br from-blue-900/40 to-navy-900 border border-blue-500/30 p-6 rounded-lg relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-10"><Server size={64} /></div>
-                        <h3 className="text-blue-400 font-mono text-sm uppercase tracking-widest mb-1 flex items-center gap-2"><Server size={14} /> Warm Wallet</h3>
-                        <p className="text-xs text-slate-400 mb-4">Escrow & Treasury</p>
-                        <p className="text-3xl font-serif text-white">${treasury.warmWallet.toLocaleString()}</p>
-                        <div className="mt-4 text-xs text-blue-300/60 bg-blue-900/20 px-2 py-1 rounded inline-block">Target: 30%</div>
-                    </div>
+        {/* WITHDRAWALS */}
+        {activeTab === 'withdrawals' && (
+          <div className="bg-navy-800 rounded border border-white/5 overflow-hidden animate-fade-in">
+            <div className="p-4 bg-navy-950 border-b border-white/10 flex justify-between items-center">
+                <h3 className="text-white font-medium flex items-center gap-2"><ArrowUpRight size={16} className="text-rose-500" /> Pending Withdrawals</h3>
+                <span className="text-xs text-slate-500">High-value exits require dual-signoff (simulated).</span>
+            </div>
+            {withdrawals.length === 0 ? <div className="p-12 text-center text-slate-400">No pending withdrawals.</div> : (
+              <table className="min-w-full divide-y divide-white/10">
+                <thead className="bg-navy-900">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">User</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Destination</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-400 uppercase">Amount</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-400 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {withdrawals.map((item) => (
+                    <tr key={item.id}>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-white">{item.user?.fullName}</div>
+                        <div className="text-xs text-slate-500">{new Date(item.createdAt).toLocaleDateString()}</div>
+                      </td>
+                      <td className="px-6 py-4 text-xs font-mono text-slate-300 truncate max-w-[150px]">
+                        {item.metadata?.address || 'Bank Wire'}
+                      </td>
+                      <td className="px-6 py-4 text-right text-sm font-bold text-rose-400">
+                        -{item.amount.toLocaleString()} {item.currency}
+                      </td>
+                      <td className="px-6 py-4 text-right flex justify-end gap-2">
+                        <button onClick={() => handleWithdrawalAction(item.id, 'approve')} className="text-xs bg-gold-600 hover:bg-gold-500 text-white px-3 py-1.5 rounded">Approve</button>
+                        <button onClick={() => handleWithdrawalAction(item.id, 'reject')} className="text-xs bg-rose-900/50 hover:bg-rose-900 text-rose-200 border border-rose-500/20 px-3 py-1.5 rounded">Reject</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
 
-                    <div className="bg-gradient-to-br from-indigo-900/40 to-navy-900 border border-indigo-500/30 p-6 rounded-lg relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-10"><Lock size={64} /></div>
-                        <h3 className="text-indigo-400 font-mono text-sm uppercase tracking-widest mb-1 flex items-center gap-2"><Lock size={14} /> Cold Storage</h3>
-                        <p className="text-xs text-slate-400 mb-4">Deep Vault Reserves</p>
-                        <p className="text-3xl font-serif text-white">${treasury.coldWallet.toLocaleString()}</p>
-                        <div className="mt-4 text-xs text-indigo-300/60 bg-indigo-900/20 px-2 py-1 rounded inline-block">Target: 60%</div>
+        {/* LOGS - NEW TAB */}
+        {activeTab === 'logs' && (
+            <div className="bg-navy-800 rounded border border-white/5 overflow-hidden animate-fade-in">
+                <div className="p-4 bg-navy-950 border-b border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <h3 className="text-white font-medium flex items-center gap-2"><List size={16} className="text-slate-400" /> Admin Activity Log</h3>
+                    
+                    <div className="flex gap-2 w-full md:w-auto">
+                        <div className="relative">
+                            <select 
+                                value={logsFilter.actionType}
+                                onChange={(e) => {
+                                    setLogsFilter({...logsFilter, actionType: e.target.value});
+                                    fetchSystemLogs(); // Trigger fetch on change for simplicity
+                                }}
+                                className="bg-navy-800 text-xs text-slate-300 border border-white/10 rounded px-3 py-1.5 focus:border-gold-500 outline-none appearance-none pr-8"
+                            >
+                                <option value="">All Actions</option>
+                                <option value="APPROVE_DEPOSIT">Approve Deposit</option>
+                                <option value="APPROVE_WITHDRAWAL">Approve Withdrawal</option>
+                                <option value="MANUAL_CREDIT">Manual Credit</option>
+                                <option value="MANUAL_DEBIT">Manual Debit</option>
+                                <option value="VERIFY_USER">Verify User</option>
+                                <option value="CREATE_ASSET">Create Asset</option>
+                            </select>
+                        </div>
+                        <button onClick={fetchSystemLogs} className="bg-navy-700 hover:bg-navy-600 text-slate-300 p-1.5 rounded border border-white/10"><Search size={14} /></button>
                     </div>
                 </div>
 
-                {/* Multisig Queue */}
-                <div className="bg-navy-800 rounded border border-white/5 overflow-hidden">
-                    <div className="p-4 border-b border-white/10 bg-navy-950 flex justify-between items-center">
-                        <h3 className="text-white font-medium flex items-center gap-2"><Key size={16} className="text-gold-500" /> Pending Multisig Requests</h3>
-                        <span className="text-xs text-slate-500">M-of-N Consensus Required</span>
-                    </div>
-                    {multisigRequests.length === 0 ? (
-                        <div className="p-12 text-center text-slate-500 text-sm">All secure transactions are up to date.</div>
-                    ) : (
+                {logsLoading ? (
+                    <div className="p-12 text-center"><Loader2 className="animate-spin text-gold-500 mx-auto" /></div>
+                ) : systemLogs.length === 0 ? (
+                    <div className="p-12 text-center text-slate-500 text-sm">No activity logs found.</div>
+                ) : (
+                    <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-white/10">
                             <thead className="bg-navy-900">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Reference</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">User</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Amount</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Tier</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Timestamp</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Admin</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Action</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Target</th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-400 uppercase">Amount</th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-400 uppercase">Details</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
-                                {multisigRequests.map(req => (
-                                    <tr key={req.id}>
-                                        <td className="px-6 py-4 whitespace-nowrap font-mono text-xs text-slate-400">{req.referenceId}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-white">{req.user?.fullName || 'Unknown'}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-white">${req.amount.toLocaleString()}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="bg-rose-500/10 text-rose-400 px-2 py-1 rounded text-xs font-bold border border-rose-500/20">WARM WALLET</span>
+                                {systemLogs.map((log) => (
+                                    <tr key={log.id} className="hover:bg-white/5">
+                                        <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-500 font-mono">
+                                            {new Date(log.createdAt).toLocaleString()}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-300">
+                                            {log.admin?.email || log.adminId.substring(0,8)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <button onClick={() => approveMultisig(req.referenceId)} className="text-xs bg-gold-600 hover:bg-gold-500 text-white px-3 py-1.5 rounded flex items-center gap-1">
-                                                <Key size={10} /> Sign & Release
-                                            </button>
+                                            <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase ${
+                                                log.actionType.includes('APPROVE') ? 'bg-emerald-500/10 text-emerald-400' :
+                                                log.actionType.includes('REJECT') ? 'bg-rose-500/10 text-rose-400' :
+                                                log.actionType.includes('MANUAL') ? 'bg-amber-500/10 text-amber-400' : 
+                                                'bg-blue-500/10 text-blue-400'
+                                            }`}>
+                                                {log.actionType.replace('_', ' ')}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-400 font-mono">
+                                            {log.targetType}: {log.targetId ? log.targetId.substring(0,8) : 'N/A'}...
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-xs font-bold text-white">
+                                            {log.amount ? `${log.amount.toLocaleString()} ${log.currency || 'USD'}` : '-'}
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="group relative inline-block">
+                                                <FileText size={14} className="text-slate-500 cursor-pointer hover:text-white" />
+                                                <div className="absolute right-0 top-6 w-64 bg-navy-950 border border-white/10 rounded p-3 text-[10px] text-slate-300 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 whitespace-normal break-words">
+                                                    {log.details}
+                                                    <div className="mt-2 pt-2 border-t border-white/5 text-slate-500">IP: {log.ipAddress}</div>
+                                                </div>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
-                    )}
-                </div>
-            </div>
-        )}
-
-        {activeTab === 'risk' && (
-            <div className="space-y-8">
-                {/* AI Risk Monitor Header */}
-                <div className="bg-gradient-to-r from-red-900/30 to-navy-900 p-6 rounded border border-red-500/20 flex justify-between items-center">
-                    <div>
-                        <h3 className="text-xl text-white font-serif flex items-center gap-2"><Siren className="text-red-500 animate-pulse" /> AI Risk Monitor</h3>
-                        <p className="text-sm text-slate-400">Real-time fraud detection active. Monitoring velocity, geolocation, and pattern anomalies.</p>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-2xl font-bold text-white">{alerts.length}</p>
-                        <p className="text-xs text-red-400 uppercase tracking-widest">Active Alerts</p>
-                    </div>
-                </div>
-
-                {/* Alert Center */}
-                <div className="bg-navy-800 rounded border border-white/5 overflow-hidden">
-                    <div className="p-4 border-b border-white/10 bg-navy-950 flex justify-between items-center">
-                        <h3 className="text-white font-medium flex items-center gap-2"><AlertTriangle size={16} className="text-amber-500" /> Recent Flags</h3>
-                        <span className="text-xs text-slate-500">Live Feed</span>
-                    </div>
-                    {alerts.length === 0 ? (
-                        <div className="p-12 text-center text-slate-500 text-sm">No critical risk flags detected.</div>
-                    ) : (
-                        <div className="divide-y divide-white/10">
-                            {alerts.map((alert: any) => (
-                                <div key={alert.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between hover:bg-white/5 gap-4">
-                                    <div className="flex items-start gap-4">
-                                        <div className={`mt-1 w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                                            alert.level === 'HIGH' ? 'bg-red-500 text-white' : 'bg-amber-500 text-navy-900'
-                                        }`}>
-                                            {alert.score}
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <p className="text-white text-sm font-bold">{alert.type}</p>
-                                                <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-slate-300">{alert.action}</span>
-                                            </div>
-                                            <p className="text-xs text-slate-400 mt-1">User: <span className="text-gold-500">{alert.user}</span> • {new Date(alert.timestamp).toLocaleString()}</p>
-                                            <div className="flex flex-wrap gap-2 mt-2">
-                                                {alert.reasons?.map((r: string, i: number) => (
-                                                    <span key={i} className="text-[10px] bg-red-900/40 text-red-300 border border-red-500/20 px-2 py-0.5 rounded">{r}</span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-2 self-end md:self-center">
-                                        <button className="text-xs bg-navy-700 hover:bg-navy-600 text-white px-3 py-2 rounded border border-white/10">Dismiss</button>
-                                        {alert.action === 'BLOCK' ? (
-                                            <button className="text-xs bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded flex items-center gap-1"><Lock size={12} /> Confirm Block</button>
-                                        ) : (
-                                            <button className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded flex items-center gap-1"><CheckCircle size={12} /> Approve</button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                {/* Audit Logs */}
-                {auditLogs && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-navy-800 p-6 rounded border border-white/5">
-                            <h3 className="text-white font-medium mb-4 flex items-center gap-2"><Scale size={16} /> Compliance Metrics</h3>
-                            <div className="space-y-3">
-                                <div className="flex justify-between text-sm"><span className="text-slate-400">Total KYC Checks</span> <span className="text-white">{auditLogs.metrics?.totalKycChecks}</span></div>
-                                <div className="flex justify-between text-sm"><span className="text-slate-400">Passed</span> <span className="text-emerald-400">{auditLogs.metrics?.passed}</span></div>
-                                <div className="flex justify-between text-sm"><span className="text-slate-400">Failed</span> <span className="text-red-400">{auditLogs.metrics?.failed}</span></div>
-                                <div className="flex justify-between text-sm border-t border-white/10 pt-2"><span className="text-slate-400">SARs Filed</span> <span className="text-white font-bold">{auditLogs.metrics?.sarsFiled}</span></div>
-                            </div>
-                        </div>
-                        <div className="bg-navy-800 p-6 rounded border border-white/5">
-                            <h3 className="text-white font-medium mb-4 flex items-center gap-2"><FileText size={16} /> Recent Audit Logs</h3>
-                            <div className="space-y-2 max-h-40 overflow-y-auto">
-                                {auditLogs.logs?.map((log: any) => (
-                                    <div key={log.id} className="text-xs text-slate-400 border-l-2 border-white/10 pl-3 py-1">
-                                        <span className="text-gold-500 font-mono">{log.event}</span> - {log.user} <span className="opacity-50">({new Date(log.time).toLocaleTimeString()})</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
                     </div>
                 )}
             </div>
         )}
 
-        {activeTab === 'assets' && (
-           <div className="text-center py-20 bg-navy-800 border border-dashed border-white/10 rounded">
-             <Briefcase className="mx-auto h-12 w-12 text-slate-500 mb-4" />
-             <h3 className="text-lg font-medium text-white">Asset Management</h3>
-             <p className="text-slate-400 mb-6">Manage real estate, art, and collectibles inventory.</p>
-             <button 
-                onClick={() => navigate('/admin/assets/new')}
-                className="bg-gold-600 hover:bg-gold-500 text-white px-4 py-2 rounded flex items-center mx-auto transition-colors"
-             >
-               <Plus className="w-4 h-4 mr-2" /> Add New Asset
-             </button>
-           </div>
+        {/* DIAGNOSTICS */}
+        {activeTab === 'diagnostics' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fade-in">
+                <div className="bg-navy-800 border border-white/5 rounded-lg p-6">
+                    <h3 className="text-white font-medium mb-4 flex items-center gap-2"><Terminal size={18} className="text-gold-500" /> System Health Check</h3>
+                    <button 
+                        onClick={runSystemDiagnostics} 
+                        disabled={runningDiag}
+                        className="bg-navy-700 hover:bg-navy-600 text-white px-6 py-2 rounded text-sm font-medium disabled:opacity-50 flex items-center gap-2 w-full justify-center border border-white/10"
+                    >
+                        {runningDiag ? <Loader2 className="animate-spin" /> : 'Run Diagnostics Suite'}
+                    </button>
+                    {diagResults && (
+                        <div className="mt-4 bg-black/30 p-3 rounded text-xs font-mono text-green-400 overflow-auto max-h-40">
+                            {JSON.stringify(diagResults, null, 2)}
+                        </div>
+                    )}
+                </div>
+            </div>
         )}
+
       </div>
+
+      {/* WALLET CONTROL MODAL */}
+      {walletModal.isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/90 backdrop-blur-sm animate-fade-in">
+              <div className="bg-navy-800 rounded-lg shadow-2xl border border-white/10 w-full max-w-md p-6">
+                  <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-xl font-serif text-white">Manage Funds</h3>
+                      <button onClick={() => setWalletModal({ isOpen: false, userId: null, userName: '' })} className="text-slate-400 hover:text-white"><X size={20}/></button>
+                  </div>
+                  
+                  <div className="mb-6 p-3 bg-navy-900 rounded border border-white/5 text-sm text-slate-300">
+                      Adjusting balance for: <span className="text-white font-bold">{walletModal.userName}</span>
+                  </div>
+
+                  <div className="space-y-4">
+                      <div>
+                          <label className="block text-sm text-slate-400 mb-2">Action</label>
+                          <div className="grid grid-cols-2 gap-3">
+                              <button 
+                                onClick={() => setWalletForm({...walletForm, type: 'CREDIT'})}
+                                className={`py-2 rounded text-sm font-bold transition-colors ${walletForm.type === 'CREDIT' ? 'bg-emerald-600 text-white' : 'bg-navy-900 text-slate-400'}`}
+                              >
+                                  CREDIT (+)
+                              </button>
+                              <button 
+                                onClick={() => setWalletForm({...walletForm, type: 'DEBIT'})}
+                                className={`py-2 rounded text-sm font-bold transition-colors ${walletForm.type === 'DEBIT' ? 'bg-rose-600 text-white' : 'bg-navy-900 text-slate-400'}`}
+                              >
+                                  DEBIT (-)
+                              </button>
+                          </div>
+                      </div>
+
+                      <div>
+                          <label className="block text-sm text-slate-400 mb-1">Amount (USD)</label>
+                          <input 
+                            type="number" 
+                            value={walletForm.amount}
+                            onChange={(e) => setWalletForm({...walletForm, amount: e.target.value})}
+                            className="w-full bg-navy-900 border border-white/10 rounded p-2 text-white focus:border-gold-500 outline-none"
+                            placeholder="0.00"
+                          />
+                      </div>
+
+                      <div>
+                          <label className="block text-sm text-slate-400 mb-1">Audit Reason (Required)</label>
+                          <textarea 
+                            value={walletForm.reason}
+                            onChange={(e) => setWalletForm({...walletForm, reason: e.target.value})}
+                            className="w-full bg-navy-900 border border-white/10 rounded p-2 text-white focus:border-gold-500 outline-none text-sm"
+                            placeholder="e.g. Wire transfer received REF#9982"
+                            rows={2}
+                          />
+                      </div>
+
+                      <button 
+                        onClick={submitWalletAdjustment}
+                        disabled={walletLoading || !walletForm.amount || !walletForm.reason}
+                        className="w-full bg-gold-600 hover:bg-gold-500 text-white py-3 rounded font-medium disabled:opacity-50 flex justify-center items-center gap-2 mt-2"
+                      >
+                        {walletLoading ? <Loader2 className="animate-spin" /> : 'Execute Adjustment'}
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
     </div>
   );
 };

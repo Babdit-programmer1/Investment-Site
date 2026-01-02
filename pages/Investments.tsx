@@ -20,7 +20,7 @@ const MOCK_INVESTMENTS: Investment[] = [
     minInvestment: 50000,
     returnRate: '14.5%',
     targetIrp: 14.5,
-    term: '36 Months',
+    term: '6-12 Months',
     riskLevel: 'Low',
     status: 'ACTIVE',
     imageUrl: 'https://images.unsplash.com/photo-1600596542815-e328701102b9?q=80&w=1600',
@@ -37,7 +37,7 @@ const MOCK_INVESTMENTS: Investment[] = [
     minInvestment: 100000,
     returnRate: '18.2%',
     targetIrp: 18.2,
-    term: '5-7 Years',
+    term: '12-18 Months',
     riskLevel: 'Medium',
     status: 'ACTIVE',
     imageUrl: 'https://images.unsplash.com/photo-1561214115-f2f134cc4912?q=80&w=1600',
@@ -54,7 +54,7 @@ const MOCK_INVESTMENTS: Investment[] = [
     minInvestment: 500000,
     returnRate: '24.0%',
     targetIrp: 24.0,
-    term: '5-10 Years',
+    term: '3-6 Months',
     riskLevel: 'High',
     status: 'ACTIVE',
     imageUrl: 'https://images.unsplash.com/photo-1583121274602-3e2820c698d2?q=80&w=1600',
@@ -71,7 +71,7 @@ const MOCK_INVESTMENTS: Investment[] = [
     minInvestment: 25000,
     returnRate: '21.5%',
     targetIrp: 21.5,
-    term: '7 Years',
+    term: '12-24 Months',
     riskLevel: 'High',
     status: 'ACTIVE',
     imageUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1600',
@@ -195,7 +195,7 @@ const Investments: React.FC = () => {
                <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold-300 to-amber-600">Exclusive Opportunities</span>
              </h1>
              <p className="text-slate-400 text-lg md:text-xl font-light mb-8 max-w-2xl mx-auto">
-               From satellite infrastructure to Renaissance masterpieces. Build a portfolio that defies convention.
+               From satellite infrastructure to Renaissance masterpieces. Build a portfolio that defies convention with short-term liquidity options.
              </p>
           </div>
         </div>
@@ -302,7 +302,7 @@ const Investments: React.FC = () => {
                   </div>
 
                   <div className="mb-6 relative h-12">
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1 absolute -top-4 left-0">Projected Growth</p>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1 absolute -top-4 left-0">Projected Growth ({inv.term})</p>
                     <GrowthChart scenarios={inv.scenarios} color={inv.riskLevel === 'High' ? '#fbbf24' : inv.riskLevel === 'Medium' ? '#34d399' : '#60a5fa'} />
                   </div>
                   

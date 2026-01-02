@@ -45,7 +45,7 @@ const seedPlans = async () => {
       riskLevel: 'Low',
       targetRoi: '6-8%',
       minInvestment: 10000,
-      lockupPeriod: '12 Months',
+      lockupPeriod: '3 Months',
       allocation: JSON.stringify({ "Gold": 40, "Real Estate": 40, "Cash": 20 }),
       description: 'Focused on wealth preservation and inflation hedging using tangible assets with low volatility.'
     },
@@ -54,7 +54,7 @@ const seedPlans = async () => {
       riskLevel: 'Medium',
       targetRoi: '10-14%',
       minInvestment: 25000,
-      lockupPeriod: '36 Months',
+      lockupPeriod: '6-9 Months',
       allocation: JSON.stringify({ "Real Estate": 50, "Art": 30, "Private Credit": 20 }),
       description: 'A hybrid strategy targeting consistent cash flow from real estate combined with moderate appreciation.'
     },
@@ -63,7 +63,7 @@ const seedPlans = async () => {
       riskLevel: 'High',
       targetRoi: '18-25%',
       minInvestment: 50000,
-      lockupPeriod: '5-7 Years',
+      lockupPeriod: '12 Months',
       allocation: JSON.stringify({ "Art": 40, "Collectibles": 30, "Venture Equity": 30 }),
       description: 'Aggressive capital appreciation targeting asymmetric upside in emerging artists and rare artifacts.'
     }

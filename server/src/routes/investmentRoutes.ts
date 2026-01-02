@@ -1,7 +1,13 @@
 
 import express from 'express';
 import { authenticateToken } from '../middleware/authMiddleware';
-import { getAllInvestments, getInvestmentById, sellAsset } from '../controllers/investmentController';
+import { 
+    getAllInvestments, 
+    getInvestmentById, 
+    sellAsset,
+    topUpInvestment,
+    payMonthlyInstallment 
+} from '../controllers/investmentController';
 
 const router = express.Router();
 
@@ -9,11 +15,15 @@ const router = express.Router();
 router.get('/', getAllInvestments);
 router.get('/:id', getInvestmentById);
 
-// Private: Invest in an asset
+// Private Routes
 router.post('/invest', authenticateToken, (req, res) => {
-  res.json({ message: "Investment processed successfully" });
+  res.json({ message: "Use /payments/initiate for investments" });
 });
 
 router.post('/sell', authenticateToken, sellAsset);
+
+// New Feature Routes
+router.post('/:id/top-up', authenticateToken, topUpInvestment);
+router.post('/:id/pay-installment', authenticateToken, payMonthlyInstallment);
 
 export default router;
