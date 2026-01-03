@@ -1,9 +1,11 @@
-// Production-ready configuration
-// In a real deployment, these would be populated by build-time environment variables
-const isProduction = process.env.NODE_ENV === 'production';
 
+// Production-ready configuration
+// Automatically switches between local development and production endpoints
+const isProduction = window.location.hostname !== 'localhost' && !window.location.hostname.includes('127.0.0.1');
+
+// In local dev, we strictly use 3001. In production, we use the relative /api/v1 path.
 export const API_BASE_URL = isProduction 
-  ? (process.env.REACT_APP_API_URL || '/api/v1') // Relative path for same-domain hosting in prod
-  : 'http://localhost:3001/api/v1'; // Default for local preview
+  ? '/api/v1' 
+  : 'http://localhost:3001/api/v1';
 
 export const APP_NAME = 'Prestige Assets';
