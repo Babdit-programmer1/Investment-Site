@@ -6,7 +6,7 @@ import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { 
   TrendingUp, Briefcase, Wallet as WalletIcon, 
   ArrowUpRight, ArrowDownLeft, Sparkles, 
-  FileText, CheckCircle, Lock, Copy, Activity, ShieldCheck
+  FileText, CheckCircle, Lock, Copy, Activity, ShieldCheck, Loader2, WifiOff
 } from 'lucide-react';
 import { InvestmentIntent, Wallet } from '../types';
 import { API_BASE_URL } from '../src/config';
@@ -21,16 +21,15 @@ const Dashboard: React.FC = () => {
   const [wallet, setWallet] = useState<any>(null);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   if (user && !user.onboardingCompleted) {
     return <Navigate to="/onboarding" replace />;
   }
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
   const fetchDashboardData = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const token = localStorage.getItem('prestige_token');
       const headers = { 'Authorization': `Bearer ${token}` };
@@ -41,33 +40,60 @@ const Dashboard: React.FC = () => {
         fetch(`${API_BASE_URL}/logs?type=ALL`, { headers })
       ]);
 
-      if (invRes.ok) setInvestments(await invRes.json());
-      if (walletRes.ok) setWallet(await walletRes.json());
-      if (logRes.ok) setLogs(await logRes.json());
-    } catch (e) {
-      console.warn("Using fallback data");
+      if (!invRes.ok || !walletRes.ok) throw new Error("Sync failure: Secure endpoint unreachable.");
+
+      setInvestments(await invRes.json());
+      setWallet(await walletRes.json());
+      setLogs(logRes.ok ? await logRes.json() : []);
+    } catch (e: any) {
+      console.error("Dashboard connection failed:", e);
+      setError("Unable to synchronize portfolio data. Please check your local server status.");
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
   const portfolioStats = useMemo(() => {
     const liquid = wallet?.fiatBalance || 0;
     const invested = wallet?.investmentBalance || 0;
     const total = liquid + invested;
-    const gain = invested * 0.048; // Simulated ROI
+    // Real-time gain calculation removed as per production requirements. 
+    // This will be populated from realized dividends in the ledger.
+    const realizedYield = logs
+        .filter(l => l.actionType === 'DIVIDEND' || l.actionType === 'PROFIT')
+        .reduce((sum, l) => sum + Number(l.amount), 0);
 
     return [
       { label: "Total Net Worth", value: convertPrice(total), icon: <ShieldCheck className="text-gold-500" />, sub: "Verified Assets" },
       { label: "Liquid Capital", value: convertPrice(liquid), icon: <WalletIcon className="text-blue-400" />, sub: "Available to Invest" },
       { label: "Invested Capital", value: convertPrice(invested), icon: <Briefcase className="text-purple-400" />, sub: "Fractional Holdings" },
-      { label: "Total Yield", value: `+${convertPrice(gain)}`, icon: <TrendingUp className="text-emerald-400" />, sub: "Unrealized Gain" }
+      { label: "Total Yield", value: convertPrice(realizedYield), icon: <TrendingUp className="text-emerald-400" />, sub: "Realized Gains" }
     ];
-  }, [wallet, convertPrice]);
+  }, [wallet, convertPrice, logs]);
+
+  if (loading) return (
+    <div className="min-h-screen bg-navy-900 pt-20 flex flex-col justify-center items-center">
+        <Loader2 className="w-10 h-10 text-gold-500 animate-spin mb-4" />
+        <p className="text-slate-500 font-serif tracking-widest animate-pulse">SYNCHRONIZING SECURE NODE</p>
+    </div>
+  );
+
+  if (error) return (
+    <div className="min-h-screen bg-navy-900 pt-20 flex flex-col justify-center items-center px-4">
+        <WifiOff className="w-16 h-16 text-rose-500 mb-6 opacity-40" />
+        <h2 className="text-2xl font-serif text-white mb-2">Connection Error</h2>
+        <p className="text-slate-400 text-center max-w-md mb-8">{error}</p>
+        <button onClick={fetchDashboardData} className="px-8 py-2 bg-gold-600 text-white rounded">Reconnect</button>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-navy-900 pt-20">
-      {/* Premium Header */}
+      {/* Header */}
       <div className="bg-navy-950 border-b border-white/5 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
@@ -134,7 +160,6 @@ const Dashboard: React.FC = () => {
                              </div>
                              <div className="text-right">
                                 <p className="text-white font-bold">{convertPrice(inv.amount)}</p>
-                                <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">+4.8% Gain</p>
                              </div>
                           </div>
                         ))}
@@ -175,19 +200,23 @@ const Dashboard: React.FC = () => {
                       </tr>
                    </thead>
                    <tbody className="divide-y divide-white/5">
-                      {logs.map((log) => (
-                        <tr key={log.id} className="hover:bg-white/5">
-                           <td className="px-6 py-4">
-                              <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase ${
-                                log.actionType.includes('DEPOSIT') ? 'bg-emerald-500/10 text-emerald-400' :
-                                log.actionType.includes('WITHDRAWAL') ? 'bg-rose-500/10 text-rose-400' : 'bg-blue-500/10 text-blue-400'
-                              }`}>{log.actionType}</span>
-                           </td>
-                           <td className="px-6 py-4 text-xs font-mono text-slate-500">{log.referenceId}</td>
-                           <td className="px-6 py-4 text-sm font-bold text-white">{convertPrice(log.amount)}</td>
-                           <td className="px-6 py-4 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">{log.status}</td>
-                        </tr>
-                      ))}
+                      {logs.length === 0 ? (
+                          <tr><td colSpan={4} className="p-12 text-center text-slate-500 italic">No ledger entries found.</td></tr>
+                      ) : (
+                        logs.map((log) => (
+                            <tr key={log.id} className="hover:bg-white/5">
+                               <td className="px-6 py-4">
+                                  <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase ${
+                                    log.actionType.includes('DEPOSIT') ? 'bg-emerald-500/10 text-emerald-400' :
+                                    log.actionType.includes('WITHDRAWAL') ? 'bg-rose-500/10 text-rose-400' : 'bg-blue-500/10 text-blue-400'
+                                  }`}>{log.actionType}</span>
+                               </td>
+                               <td className="px-6 py-4 text-xs font-mono text-slate-500">{log.referenceId}</td>
+                               <td className="px-6 py-4 text-sm font-bold text-white">{convertPrice(log.amount)}</td>
+                               <td className="px-6 py-4 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">{log.status}</td>
+                            </tr>
+                          ))
+                      )}
                    </tbody>
                 </table>
              </div>

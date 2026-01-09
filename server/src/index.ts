@@ -1,4 +1,3 @@
-
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -19,41 +18,31 @@ import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
 
-// Performance Metrics Store
-const metrics = {
-  requests: 0,
-  errors: 0,
-  avgLatency: 0
-};
-
 // Security Middleware
 app.use(helmet({
-  contentSecurityPolicy: false, // Disabled for local development ease, re-enable for prod
+  contentSecurityPolicy: false, 
 }) as any);
 
-// Enhanced CORS for Local & AI Studio
+// Enhanced CORS
 app.use(cors({ 
-  origin: true, // In production, replace with specific allowed origins
+  origin: true, 
   credentials: true 
 }));
 
-app.use(express.json({ limit: '10kb' }) as any);
-
-// Monitoring Middleware
-app.use((req, res, next) => {
-  const start = Date.now();
-  metrics.requests++;
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    metrics.avgLatency = (metrics.avgLatency * (metrics.requests - 1) + duration) / metrics.requests;
-    if (res.statusCode >= 400) metrics.errors++;
-  });
-  next();
-});
-
+app.use(express.json({ limit: '10mb' }) as any);
 app.use(rateLimiter);
 
-// Routes
+// Health Check
+app.get('/api/v1/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    // Fix: Accessing uptime from process with type cast to any to resolve property not found on type Process
+    uptime: (process as any).uptime(),
+    timestamp: new Date().toISOString()
+  });
+});
+
+// API Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/investments', investmentRoutes);
 app.use('/api/v1/admin', adminRoutes);
@@ -66,20 +55,19 @@ app.use('/api/v1/kyc', kycRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    env: config.nodeEnv
-  });
+// Detailed 404 for API Debugging
+app.use('/api/v1/*', (req, res) => {
+    res.status(404).json({ 
+        error: 'Route Not Found',
+        message: `The endpoint ${req.method} ${req.originalUrl} does not exist on the Prestige Assets server.`,
+        hint: 'Check your frontend config.ts API_BASE_URL setting.'
+    });
 });
 
-app.get('/', (req, res) => {
-  res.send('Prestige Assets API Running (Industrial Standard)');
-});
-
+// Global Error Handler
 app.use(errorHandler);
 
-app.listen(config.port, () => {
-  console.log(`Prestige Assets Backend running on port ${config.port}`);
+const PORT = config.port || 3001;
+app.listen(PORT, () => {
+  console.log(`[SYSTEM] Prestige Assets Backend Operational on Port ${PORT}`);
 });

@@ -1,43 +1,8 @@
+
 import React, { useEffect, useState } from 'react';
-import { FileText, Download, Loader2, Calendar, DollarSign, TrendingUp, TrendingDown, Clock, Shield, PieChart, Activity } from 'lucide-react';
+import { FileText, Download, Loader2, Calendar, DollarSign, TrendingUp, TrendingDown, Clock, Shield, PieChart, Activity, WifiOff } from 'lucide-react';
 import { InvestorStatement } from '../types';
 import { API_BASE_URL } from '../src/config';
-
-// Mock Data for Preview Safety
-const MOCK_STATEMENTS: InvestorStatement[] = [
-  {
-    id: 's1',
-    period: 'March 2024',
-    generatedAt: new Date().toISOString(),
-    totalInvested: 50000,
-    currentValue: 52400,
-    roi: 4.8,
-    content: { assets: [] }
-  },
-  {
-    id: 's2',
-    period: 'February 2024',
-    generatedAt: new Date(Date.now() - 2592000000).toISOString(),
-    totalInvested: 50000,
-    currentValue: 51200,
-    roi: 2.4,
-    content: { assets: [] }
-  }
-];
-
-const MOCK_TRANSACTIONS = [
-    { id: 't1', type: 'DEPOSIT', amount: 15000, date: '2024-03-10', status: 'COMPLETED', ref: 'DEP-001' },
-    { id: 't2', type: 'INVESTMENT', amount: 50000, date: '2024-03-12', status: 'COMPLETED', ref: 'INV-001' },
-    { id: 't3', type: 'PROFIT', amount: 450, date: '2024-03-30', status: 'COMPLETED', ref: 'DIV-001' }
-];
-
-const MOCK_TAX = {
-    year: 2024,
-    totalIncome: 1250,
-    shortTermCapitalGains: 0,
-    longTermCapitalGains: 5000,
-    totalLiability: 1375
-};
 
 const Statements: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'STATEMENTS' | 'TRANSACTIONS' | 'PNL' | 'TAX'>('STATEMENTS');
@@ -46,13 +11,12 @@ const Statements: React.FC = () => {
   const [pnl, setPnL] = useState<any>(null);
   const [tax, setTax] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const token = localStorage.getItem('prestige_token');
 
-  useEffect(() => {
-    fetchAllData();
-  }, []);
-
   const fetchAllData = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const headers = { 'Authorization': `Bearer ${token}` };
       
@@ -63,21 +27,24 @@ const Statements: React.FC = () => {
           fetch(`${API_BASE_URL}/reporting/tax?year=2024`, { headers })
       ]);
 
-      setStatements(stmtRes.ok ? await stmtRes.json() : MOCK_STATEMENTS);
-      setTransactions(txRes.ok ? await txRes.json() : MOCK_TRANSACTIONS);
-      setPnL(pnlRes.ok ? await pnlRes.json() : { totalInvested: 50000, currentValue: 52400, realizedGains: 450, unrealizedGains: 1950, totalRoi: 4.8 });
-      setTax(taxRes.ok ? await taxRes.json() : MOCK_TAX);
+      if (!stmtRes.ok || !txRes.ok) throw new Error("Synchronization Error");
 
-    } catch (e) {
-      console.warn("Backend unavailable, using mock reporting data");
-      setStatements(MOCK_STATEMENTS);
-      setTransactions(MOCK_TRANSACTIONS);
-      setPnL({ totalInvested: 50000, currentValue: 52400, realizedGains: 450, unrealizedGains: 1950, totalRoi: 4.8 });
-      setTax(MOCK_TAX);
+      setStatements(await stmtRes.json());
+      setTransactions(await txRes.json());
+      setPnL(pnlRes.ok ? await pnlRes.json() : null);
+      setTax(taxRes.ok ? await taxRes.json() : null);
+
+    } catch (e: any) {
+      console.error("Reporting sync failed:", e);
+      setError("The reporting server is currently unreachable. Please verify your local node is running.");
     } finally {
         setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchAllData();
+  }, []);
 
   const handleDownload = async (id: string, period: string) => {
     try {
@@ -94,13 +61,23 @@ const Statements: React.FC = () => {
         a.click();
         window.URL.revokeObjectURL(url);
     } catch(e) {
-        alert('Simulation: PDF download triggered (Backend Unavailable)');
+        alert('Audit download failed. Node synchronization required.');
     }
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-navy-900 pt-20 flex justify-center items-center">
-        <Loader2 className="w-8 h-8 text-gold-500 animate-spin" />
+    <div className="min-h-screen bg-navy-900 pt-20 flex flex-col justify-center items-center">
+        <Loader2 className="w-10 h-10 text-gold-500 animate-spin mb-4" />
+        <p className="text-slate-500 font-serif tracking-widest animate-pulse">FETCHING AUDIT LEDGER</p>
+    </div>
+  );
+
+  if (error) return (
+    <div className="min-h-screen bg-navy-900 pt-20 flex flex-col justify-center items-center p-4">
+        <WifiOff className="w-16 h-16 text-rose-500 mb-6 opacity-40" />
+        <h2 className="text-2xl font-serif text-white mb-2">Reports Unavailable</h2>
+        <p className="text-slate-400 text-center max-w-md mb-8">{error}</p>
+        <button onClick={fetchAllData} className="px-8 py-2 bg-gold-600 text-white rounded">Retry Connection</button>
     </div>
   );
 
@@ -143,199 +120,152 @@ const Statements: React.FC = () => {
             {/* STATEMENTS TAB */}
             {activeTab === 'STATEMENTS' && (
                 <div className="space-y-6">
-                    <div className="bg-navy-900 border border-white/10 p-6 rounded-sm flex items-start gap-4 mb-8">
-                        <Loader2 className="h-6 w-6 text-gold-500 mt-1 flex-shrink-0" />
-                        <div>
-                            <h4 className="text-white font-medium">Reporting Cycle</h4>
-                            <p className="text-sm text-slate-400 mt-1 max-w-2xl">
-                                Monthly statements are generated on the 1st of each month (T+2 settlement). 
-                                Audited annual reports are available by Feb 15th.
-                            </p>
+                    {statements.length === 0 ? (
+                        <div className="bg-navy-800 p-20 text-center text-slate-500 italic rounded border border-white/5">
+                            No statements have been generated for your account yet.
                         </div>
-                    </div>
-
-                    <div className="bg-navy-800 rounded-sm border border-white/5 overflow-hidden">
-                        <table className="min-w-full divide-y divide-white/10">
-                            <thead className="bg-navy-900">
-                                <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Period</th>
-                                    <th className="px-6 py-4 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Date</th>
-                                    <th className="px-6 py-4 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Valuation</th>
-                                    <th className="px-6 py-4 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">ROI</th>
-                                    <th className="px-6 py-4 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Download</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {statements.map((stmt) => (
-                                    <tr key={stmt.id} className="hover:bg-white/5 transition-colors">
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center">
-                                                <div className="flex-shrink-0 h-8 w-8 rounded bg-navy-900 border border-white/10 flex items-center justify-center text-gold-500">
-                                                    <FileText size={14} />
-                                                </div>
-                                                <div className="ml-4">
-                                                    <div className="text-sm font-medium text-white">{stmt.period}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
-                                            {new Date(stmt.generatedAt).toLocaleDateString()}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-white font-medium">
-                                            ${stmt.currentValue.toLocaleString()}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${stmt.roi >= 0 ? 'bg-emerald-900 text-emerald-200' : 'bg-rose-900 text-rose-200'}`}>
-                                                {stmt.roi > 0 ? '+' : ''}{stmt.roi.toFixed(2)}%
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <button onClick={() => handleDownload(stmt.id, stmt.period)} className="text-slate-400 hover:text-white transition-colors">
-                                                <Download size={16} />
-                                            </button>
-                                        </td>
+                    ) : (
+                        <div className="bg-navy-800 rounded-sm border border-white/5 overflow-hidden">
+                            <table className="min-w-full divide-y divide-white/10">
+                                <thead className="bg-navy-900">
+                                    <tr>
+                                        <th className="px-6 py-4 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Period</th>
+                                        <th className="px-6 py-4 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Date</th>
+                                        <th className="px-6 py-4 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Valuation</th>
+                                        <th className="px-6 py-4 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">ROI</th>
+                                        <th className="px-6 py-4 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Download</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {statements.map((stmt) => (
+                                        <tr key={stmt.id} className="hover:bg-white/5 transition-colors">
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center">
+                                                    <div className="flex-shrink-0 h-8 w-8 rounded bg-navy-900 border border-white/10 flex items-center justify-center text-gold-500">
+                                                        <FileText size={14} />
+                                                    </div>
+                                                    <div className="ml-4">
+                                                        <div className="text-sm font-medium text-white">{stmt.period}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
+                                                {new Date(stmt.generatedAt).toLocaleDateString()}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-white font-medium">
+                                                ${stmt.currentValue.toLocaleString()}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${stmt.roi >= 0 ? 'bg-emerald-900 text-emerald-200' : 'bg-rose-900 text-rose-200'}`}>
+                                                    {stmt.roi > 0 ? '+' : ''}{stmt.roi.toFixed(2)}%
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <button onClick={() => handleDownload(stmt.id, stmt.period)} className="text-slate-400 hover:text-white transition-colors">
+                                                    <Download size={16} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             )}
 
             {/* TRANSACTIONS TAB */}
             {activeTab === 'TRANSACTIONS' && (
                 <div className="bg-navy-800 rounded-sm border border-white/5 overflow-hidden">
-                    <div className="p-4 border-b border-white/5 flex justify-between items-center">
-                        <h3 className="text-white font-medium">Financial Ledger</h3>
-                        <button className="text-xs bg-navy-700 text-slate-300 px-3 py-1.5 rounded hover:text-white">Export CSV</button>
-                    </div>
-                    <table className="min-w-full divide-y divide-white/10">
-                        <thead className="bg-navy-900">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Type</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Reference</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Date</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-slate-400 uppercase">Amount</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-slate-400 uppercase">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5">
-                            {transactions.map((tx: any) => (
-                                <tr key={tx.id || tx.referenceId}>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`text-xs font-bold px-2 py-1 rounded uppercase ${
-                                            tx.actionType === 'DEPOSIT' ? 'bg-emerald-500/10 text-emerald-400' :
-                                            tx.actionType === 'WITHDRAWAL' ? 'bg-rose-500/10 text-rose-400' :
-                                            'bg-blue-500/10 text-blue-400'
-                                        }`}>{tx.actionType}</span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-xs font-mono text-slate-400">{tx.referenceId}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{new Date(tx.createdAt).toLocaleDateString()}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-white">${tx.amount.toLocaleString()}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                                        <span className="text-xs text-slate-500">{tx.status}</span>
-                                    </td>
+                    {transactions.length === 0 ? (
+                        <div className="p-20 text-center text-slate-500 italic">No historical records found in your ledger.</div>
+                    ) : (
+                        <table className="min-w-full divide-y divide-white/10">
+                            <thead className="bg-navy-900">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Type</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Reference</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Date</th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-400 uppercase">Amount</th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-400 uppercase">Status</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                                {transactions.map((tx: any) => (
+                                    <tr key={tx.id || tx.referenceId}>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className={`text-xs font-bold px-2 py-1 rounded uppercase ${
+                                                tx.actionType === 'DEPOSIT' ? 'bg-emerald-500/10 text-emerald-400' :
+                                                tx.actionType === 'WITHDRAWAL' ? 'bg-rose-500/10 text-rose-400' :
+                                                'bg-blue-500/10 text-blue-400'
+                                            }`}>{tx.actionType}</span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-xs font-mono text-slate-400">{tx.referenceId}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{new Date(tx.createdAt).toLocaleDateString()}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-white">${tx.amount.toLocaleString()}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                                            <span className="text-xs text-slate-500">{tx.status}</span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
                 </div>
             )}
 
             {/* P&L TAB */}
-            {activeTab === 'PNL' && pnl && (
-                <div className="space-y-8">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <div className="bg-navy-800 p-6 rounded border border-white/5">
-                            <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Total Invested</p>
-                            <p className="text-2xl font-serif text-white">${pnl.totalInvested.toLocaleString()}</p>
-                        </div>
-                        <div className="bg-navy-800 p-6 rounded border border-white/5">
-                            <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Current Value</p>
-                            <p className="text-2xl font-serif text-white">${pnl.currentValue.toLocaleString()}</p>
-                        </div>
-                        <div className="bg-navy-800 p-6 rounded border border-white/5 border-l-4 border-l-emerald-500">
-                            <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Unrealized Gains</p>
-                            <p className="text-2xl font-serif text-emerald-400">+${pnl.unrealizedGains.toLocaleString()}</p>
-                        </div>
-                        <div className="bg-navy-800 p-6 rounded border border-white/5 border-l-4 border-l-gold-500">
-                            <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Realized Gains</p>
-                            <p className="text-2xl font-serif text-gold-500">+${pnl.realizedGains.toLocaleString()}</p>
-                        </div>
-                    </div>
-
-                    <div className="bg-navy-800 rounded border border-white/5 p-8">
-                        <h3 className="text-white font-serif text-lg mb-4">Performance Analysis</h3>
-                        <div className="h-64 flex items-end space-x-2">
-                            {/* Mock Bar Chart */}
-                            {[10, 15, 20, 18, 25, 30, 40, 35, 45, 50, 60, 55].map((h, i) => (
-                                <div key={i} className="flex-1 bg-navy-900 rounded-t relative group">
-                                    <div 
-                                        className="absolute bottom-0 w-full bg-gold-500/20 group-hover:bg-gold-500 transition-colors rounded-t" 
-                                        style={{ height: `${h}%` }}
-                                    ></div>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="flex justify-between mt-4 text-xs text-slate-500 font-mono">
-                            <span>JAN</span><span>DEC</span>
+            {activeTab === 'PNL' && (
+                pnl ? (
+                    <div className="space-y-8 animate-fade-in">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div className="bg-navy-800 p-6 rounded border border-white/5">
+                                <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Total Invested</p>
+                                <p className="text-2xl font-serif text-white">${pnl.totalInvested.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-navy-800 p-6 rounded border border-white/5">
+                                <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Current Value</p>
+                                <p className="text-2xl font-serif text-white">${pnl.currentValue.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-navy-800 p-6 rounded border border-white/5 border-l-4 border-l-emerald-500">
+                                <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Unrealized Gains</p>
+                                <p className="text-2xl font-serif text-emerald-400">+${pnl.unrealizedGains.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-navy-800 p-6 rounded border border-white/5 border-l-4 border-l-gold-500">
+                                <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Realized Gains</p>
+                                <p className="text-2xl font-serif text-gold-500">+${pnl.realizedGains.toLocaleString()}</p>
+                            </div>
                         </div>
                     </div>
-                </div>
+                ) : (
+                    <div className="bg-navy-800 p-20 text-center text-slate-500 italic rounded border border-white/5">
+                        Performance analysis requires active investment history.
+                    </div>
+                )
             )}
 
             {/* TAX TAB */}
-            {activeTab === 'TAX' && tax && (
-                <div className="max-w-4xl">
-                    <div className="bg-gradient-to-r from-navy-800 to-navy-900 border border-white/10 rounded-lg p-8 mb-8">
-                        <div className="flex justify-between items-start mb-6">
-                            <div>
-                                <h3 className="text-2xl font-serif text-white">Tax Summary {tax.year}</h3>
-                                <p className="text-slate-400 text-sm mt-1">Estimated liability based on realized events.</p>
-                            </div>
-                            <div className="text-right">
-                                <span className="block text-xs text-slate-500 uppercase">Est. Liability</span>
-                                <span className="text-3xl font-mono text-white">${tax.totalLiability.toLocaleString()}</span>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-8 py-6 border-t border-white/10">
-                            <div>
-                                <p className="text-xs text-slate-400 mb-1">Taxable Income (Yields)</p>
-                                <p className="text-lg text-white font-medium">${tax.totalIncome.toLocaleString()}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs text-slate-400 mb-1">Short Term Cap Gains</p>
-                                <p className="text-lg text-white font-medium">${tax.shortTermCapitalGains.toLocaleString()}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs text-slate-400 mb-1">Long Term Cap Gains</p>
-                                <p className="text-lg text-white font-medium">${tax.longTermCapitalGains.toLocaleString()}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <h4 className="text-white font-medium mb-4">Available Tax Forms</h4>
-                    <div className="space-y-3">
-                        {['Form 1099-DIV', 'Form 1099-B', 'Schedule K-1'].map(form => (
-                            <div key={form} className="flex items-center justify-between p-4 bg-navy-800 border border-white/5 rounded hover:border-gold-500/30 transition-colors">
-                                <div className="flex items-center gap-3">
-                                    <FileText className="text-slate-400" />
-                                    <div>
-                                        <p className="text-white text-sm font-medium">{form}</p>
-                                        <p className="text-xs text-slate-500">Tax Year 2023</p>
-                                    </div>
+            {activeTab === 'TAX' && (
+                tax ? (
+                    <div className="max-w-4xl animate-fade-in">
+                        <div className="bg-gradient-to-r from-navy-800 to-navy-900 border border-white/10 rounded-lg p-8 mb-8">
+                            <div className="flex justify-between items-start mb-6">
+                                <div>
+                                    <h3 className="text-2xl font-serif text-white">Tax Summary {tax.year}</h3>
+                                    <p className="text-slate-400 text-sm mt-1">Estimated liability based on realized events.</p>
                                 </div>
-                                <button className="text-gold-500 text-sm hover:text-white flex items-center gap-2">
-                                    <Download size={14} /> Download
-                                </button>
+                                <div className="text-right">
+                                    <span className="block text-xs text-slate-500 uppercase">Est. Liability</span>
+                                    <span className="text-3xl font-mono text-white">${tax.totalLiability.toLocaleString()}</span>
+                                </div>
                             </div>
-                        ))}
+                        </div>
                     </div>
-                    <p className="text-xs text-slate-500 mt-6 italic">
-                        Disclaimer: Prestige Assets does not provide tax advice. Please consult a qualified tax professional regarding your specific situation.
-                    </p>
-                </div>
+                ) : (
+                    <div className="bg-navy-800 p-20 text-center text-slate-500 italic rounded border border-white/5">
+                        No tax events recorded for the current fiscal year.
+                    </div>
+                )
             )}
 
         </div>

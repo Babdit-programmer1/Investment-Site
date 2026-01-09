@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Investment } from '../types';
 import { API_BASE_URL } from '../src/config';
-import { ArrowLeft, TrendingUp, Shield, FileText, Activity, Share2, CheckCircle, Download, ChevronRight } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Shield, FileText, Activity, Share2, CheckCircle, Download, ChevronRight, AlertTriangle, WifiOff } from 'lucide-react';
 import { useGlobal } from '../context/GlobalContext';
 import InvestModal from '../components/InvestModal';
 
@@ -14,46 +14,50 @@ const InvestmentDetail: React.FC = () => {
   
   const [asset, setAsset] = useState<Investment | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'FINANCIALS' | 'DOCUMENTS'>('OVERVIEW');
   const [showInvestModal, setShowInvestModal] = useState(false);
 
+  const fetchAsset = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/investments/${id}`);
+      if (!res.ok) throw new Error(res.status === 404 ? 'The requested asset could not be found.' : 'Failed to retrieve asset details.');
+      const data = await res.json();
+      setAsset(data);
+    } catch (e: any) {
+      console.error("InvestmentDetail Error:", e);
+      setError(e.message || "An error occurred while connecting to the server.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // Fetch asset details
-    const fetchAsset = async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/investments/${id}`);
-        if (!res.ok) throw new Error('Asset not found');
-        const data = await res.json();
-        setAsset(data);
-      } catch (e) {
-        // Fallback for preview/mock
-        console.warn("Using mock data for detail view");
-        setAsset({
-            id: '1',
-            ticker: 'RE-LDN-001',
-            title: 'The Kensington Estate',
-            category: 'Real Estate',
-            fundStrategy: 'Value-Add + Yield',
-            description: 'A rare opportunity to acquire a stake in a Grade II listed residential conversion. This asset combines immediate rental yield with significant capital appreciation potential through modernization.',
-            price: '$50,000',
-            minInvestment: 50000,
-            returnRate: '14.5%',
-            targetIrp: 14.5,
-            term: '6-12 Months',
-            riskLevel: 'Low',
-            status: 'ACTIVE',
-            imageUrl: 'https://images.unsplash.com/photo-1600596542815-e328701102b9?q=80&w=1600',
-            scenarios: { conservative: 8, moderate: 14.5, aggressive: 22 }
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchAsset();
   }, [id]);
 
-  if (loading || !asset) {
-    return <div className="min-h-screen bg-navy-900 pt-20 flex justify-center items-center text-gold-500">Loading Opportunity...</div>;
+  if (loading) {
+    return <div className="min-h-screen bg-navy-900 pt-20 flex justify-center items-center text-gold-500"><Activity className="animate-spin mr-2" /> Loading Opportunity...</div>;
+  }
+
+  if (error || !asset) {
+    return (
+        <div className="min-h-screen bg-navy-900 pt-20 flex flex-col items-center justify-center p-4">
+            <div className="text-center max-w-md">
+                <div className="w-20 h-20 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <AlertTriangle className="text-rose-500 w-10 h-10" />
+                </div>
+                <h1 className="text-3xl font-serif text-white mb-4">Unavailable</h1>
+                <p className="text-slate-400 mb-8">{error || "Asset not found."}</p>
+                <div className="flex gap-4 justify-center">
+                    <button onClick={() => navigate('/investments')} className="bg-navy-800 border border-white/10 text-white px-6 py-2 rounded">Marketplace</button>
+                    <button onClick={fetchAsset} className="bg-gold-600 text-white px-6 py-2 rounded">Retry</button>
+                </div>
+            </div>
+        </div>
+    );
   }
 
   return (
@@ -165,23 +169,6 @@ const InvestmentDetail: React.FC = () => {
                                     <p className="text-sm text-slate-400">Targeted sale at month 6-12 upon completion of value-add renovations. Secondary market liquidity available after 3-month lockup.</p>
                                 </div>
                             </div>
-
-                            <div>
-                                <h3 className="text-2xl font-serif text-white mb-4">Key Highlights</h3>
-                                <ul className="space-y-3">
-                                    {[
-                                        "High demand metropolitan district",
-                                        "Acquired at 15% below market value due to distress sale",
-                                        "Planning permission granted for 2 additional units",
-                                        "projected 22% ROI in aggressive market scenario"
-                                    ].map((item, i) => (
-                                        <li key={i} className="flex items-start gap-3">
-                                            <CheckCircle className="text-emerald-500 w-5 h-5 flex-shrink-0 mt-0.5" />
-                                            <span className="text-slate-300">{item}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
                         </div>
                     )}
 
@@ -191,20 +178,12 @@ const InvestmentDetail: React.FC = () => {
                                 <h3 className="text-white font-serif mb-6">Pro Forma Financials</h3>
                                 <div className="space-y-4">
                                     <div className="flex justify-between py-3 border-b border-white/5">
-                                        <span className="text-slate-400">Acquisition Cost</span>
-                                        <span className="text-white font-mono">$4,250,000</span>
-                                    </div>
-                                    <div className="flex justify-between py-3 border-b border-white/5">
-                                        <span className="text-slate-400">Renovation Budget</span>
-                                        <span className="text-white font-mono">$850,000</span>
-                                    </div>
-                                    <div className="flex justify-between py-3 border-b border-white/5">
-                                        <span className="text-slate-400">Projected Exit Value</span>
-                                        <span className="text-emerald-400 font-mono font-bold">$6,800,000</span>
+                                        <span className="text-slate-400">Current Price (Est.)</span>
+                                        <span className="text-white font-mono">{convertPrice(Number(asset.price || 0))}</span>
                                     </div>
                                     <div className="flex justify-between py-3">
-                                        <span className="text-slate-400">Net Profit</span>
-                                        <span className="text-gold-500 font-mono font-bold">$1,700,000</span>
+                                        <span className="text-slate-400">Yield Type</span>
+                                        <span className="text-gold-500 font-bold">{asset.fundStrategy}</span>
                                     </div>
                                 </div>
                             </div>
@@ -213,7 +192,7 @@ const InvestmentDetail: React.FC = () => {
 
                     {activeTab === 'DOCUMENTS' && (
                         <div className="animate-fade-in grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {['Offering Memorandum', 'Valuation Report 2024', 'Title Deed', 'SPV Articles of Association'].map((doc, i) => (
+                            {['Offering Memorandum', 'Valuation Report', 'Title Deed', 'SPV Articles'].map((doc, i) => (
                                 <div key={i} className="flex items-center justify-between p-4 bg-navy-800 border border-white/5 rounded hover:border-gold-500/30 transition-colors group cursor-pointer">
                                     <div className="flex items-center gap-3">
                                         <FileText className="text-slate-400 group-hover:text-gold-500 transition-colors" />
@@ -229,25 +208,12 @@ const InvestmentDetail: React.FC = () => {
 
             {/* Sidebar */}
             <div className="lg:col-span-1 space-y-8">
-                {/* Ownership Card */}
                 <div className="bg-navy-800 rounded border border-white/5 p-6">
-                    <h3 className="text-white font-serif text-lg mb-4">Funding Status</h3>
-                    <div className="mb-2 flex justify-between text-sm text-slate-400">
-                        <span>$3.2M Raised</span>
-                        <span>Goal: $5.1M</span>
-                    </div>
-                    <div className="w-full bg-navy-950 rounded-full h-2 mb-6 overflow-hidden">
-                        <div className="bg-gold-500 h-full rounded-full" style={{ width: '64%' }}></div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between mb-6 pb-6 border-b border-white/5">
+                    <h3 className="text-white font-serif text-lg mb-4">Investment Portal</h3>
+                    <div className="mb-6 pb-6 border-b border-white/5">
                         <div className="text-center">
-                            <p className="text-2xl font-bold text-white">142</p>
-                            <p className="text-xs text-slate-500 uppercase">Investors</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-2xl font-bold text-white">12d</p>
-                            <p className="text-xs text-slate-500 uppercase">Left</p>
+                            <p className="text-4xl font-bold text-white">{asset.returnRate}</p>
+                            <p className="text-xs text-slate-500 uppercase tracking-widest mt-1">Projected Annual Return</p>
                         </div>
                     </div>
 

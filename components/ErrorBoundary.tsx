@@ -54,6 +54,7 @@ export class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    return this.props.children;
+    // Fix: Cast this to any to access props.children when inheritance context loses type awareness
+    return (this as any).props.children;
   }
 }

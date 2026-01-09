@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Investment } from '../types';
-import { TrendingUp, ChevronRight, Search, SlidersHorizontal, Shield, Globe, Cpu, Leaf, Music, Car, ArrowUpRight, Zap, Loader2, ArrowUpDown } from 'lucide-react';
+import { TrendingUp, ChevronRight, Search, SlidersHorizontal, Shield, Globe, Cpu, Leaf, Music, Car, ArrowUpRight, Zap, Loader2, ArrowUpDown, AlertCircle, WifiOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGlobal } from '../context/GlobalContext';
 import { API_BASE_URL } from '../src/config';
@@ -58,31 +58,34 @@ const Investments: React.FC = () => {
   const [sortOption, setSortOption] = useState('RECOMMENDED');
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const { convertPrice } = useGlobal();
   const navigate = useNavigate();
 
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/investments`);
+      if (!res.ok) throw new Error(`API Error: ${res.status} ${res.statusText}`);
+      const data = await res.json();
+      setInvestments(data);
+    } catch (err: any) {
+      console.error('Marketplace connection failed:', err);
+      setError(err.message || 'Failed to connect to the Prestige Assets server.');
+      setInvestments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`${API_BASE_URL}/investments`);
-        if (!res.ok) throw new Error('API Unavailable');
-        const data = await res.json();
-        setInvestments(data);
-      } catch (err) {
-        console.error('Marketplace connection failed');
-        setInvestments([]);
-      } finally {
-        setLoading(false);
-      }
-    };
     loadData();
   }, []);
 
   const categories = ['All', 'Real Estate', 'Fine Art', 'Luxury Vehicles', 'Space Infra', 'AI Infra', 'Renewable Energy'];
-  const risks = ['All', 'Low', 'Medium', 'High'];
-
+  
   const filteredInvestments = useMemo(() => {
     let result = investments.filter(item => {
       const categoryMatch = filter === 'All' || item.category === filter;
@@ -134,6 +137,13 @@ const Investments: React.FC = () => {
         
         {loading ? (
           <div className="flex justify-center items-center py-32"><Loader2 className="w-12 h-12 text-gold-500 animate-spin" /></div>
+        ) : error ? (
+          <div className="text-center py-32">
+            <WifiOff className="w-16 h-16 text-rose-500 mx-auto mb-4 opacity-50" />
+            <h3 className="text-xl font-serif text-white mb-2">Marketplace Unavailable</h3>
+            <p className="text-slate-400 mb-6 max-w-md mx-auto">{error}</p>
+            <button onClick={loadData} className="px-6 py-2 bg-navy-800 border border-white/10 rounded text-gold-500 hover:text-white transition-colors">Try Again</button>
+          </div>
         ) : filteredInvestments.length === 0 ? (
           <div className="text-center py-32 text-slate-500 italic">No assets found matching your criteria.</div>
         ) : (
