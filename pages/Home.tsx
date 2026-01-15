@@ -3,8 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { ArrowRight, ShieldCheck, Award, Zap, LayoutDashboard, UserPlus, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE_URL } from '../src/config';
 import { Investment } from '../types';
+import { MOCK_INVESTMENTS } from '../src/mockData';
 
 const Home: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -12,20 +12,11 @@ const Home: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchFeatured = async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/investments`);
-        if (res.ok) {
-          const data = await res.json();
-          setFeaturedAssets(data.slice(0, 3));
-        }
-      } catch (e) {
-        console.error("Home: API connection failed");
-      } finally {
+    // Simulate network delay
+    setTimeout(() => {
+        setFeaturedAssets(MOCK_INVESTMENTS.slice(0, 3));
         setLoading(false);
-      }
-    };
-    fetchFeatured();
+    }, 800);
   }, []);
 
   return (

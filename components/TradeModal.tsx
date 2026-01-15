@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
 import { X, TrendingUp, DollarSign, RefreshCw, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
-import { API_BASE_URL } from '../src/config';
 
 interface TradeModalProps {
   asset: any;
@@ -36,30 +35,8 @@ const TradeModal: React.FC<TradeModalProps> = ({ asset, currentValue, onClose, o
     setError('');
 
     try {
-        const token = localStorage.getItem('prestige_token');
-        const endpoint = activeTab === 'SELL' ? 'sell' : 'invest'; // mapping to endpoints
-        
-        // Note: In a real app, 'sell' would be a distinct endpoint. 
-        // We will simulate it here or use the newly created endpoint.
-        const res = await fetch(`${API_BASE_URL}/investments/${endpoint}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                assetId: asset.assetId,
-                amount: parseFloat(amount)
-            })
-        });
-
-        // Simulate success if backend endpoint is missing for 'sell'
-        if (!res.ok && activeTab === 'SELL') {
-             // Mock success for demo
-             await new Promise(r => setTimeout(r, 1000));
-        } else if (!res.ok) {
-            throw new Error('Trade failed');
-        }
+        // Mock Trade
+        await new Promise(r => setTimeout(r, 1000));
 
         setSuccess(true);
         setTimeout(() => {

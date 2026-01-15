@@ -2,10 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Investment } from '../types';
-import { API_BASE_URL } from '../src/config';
-import { ArrowLeft, TrendingUp, Shield, FileText, Activity, Share2, CheckCircle, Download, ChevronRight, AlertTriangle, WifiOff } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Shield, FileText, Activity, Share2, AlertTriangle } from 'lucide-react';
 import { useGlobal } from '../context/GlobalContext';
 import InvestModal from '../components/InvestModal';
+import { MOCK_INVESTMENTS } from '../src/mockData';
 
 const InvestmentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -18,24 +18,19 @@ const InvestmentDetail: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'FINANCIALS' | 'DOCUMENTS'>('OVERVIEW');
   const [showInvestModal, setShowInvestModal] = useState(false);
 
-  const fetchAsset = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_BASE_URL}/investments/${id}`);
-      if (!res.ok) throw new Error(res.status === 404 ? 'The requested asset could not be found.' : 'Failed to retrieve asset details.');
-      const data = await res.json();
-      setAsset(data);
-    } catch (e: any) {
-      console.error("InvestmentDetail Error:", e);
-      setError(e.message || "An error occurred while connecting to the server.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchAsset();
+    // Simulate API Fetch
+    setLoading(true);
+    setTimeout(() => {
+        const found = MOCK_INVESTMENTS.find(inv => inv.id === id);
+        if (found) {
+            setAsset(found);
+            setError(null);
+        } else {
+            setError('Asset not found');
+        }
+        setLoading(false);
+    }, 500);
   }, [id]);
 
   if (loading) {
@@ -53,7 +48,6 @@ const InvestmentDetail: React.FC = () => {
                 <p className="text-slate-400 mb-8">{error || "Asset not found."}</p>
                 <div className="flex gap-4 justify-center">
                     <button onClick={() => navigate('/investments')} className="bg-navy-800 border border-white/10 text-white px-6 py-2 rounded">Marketplace</button>
-                    <button onClick={fetchAsset} className="bg-gold-600 text-white px-6 py-2 rounded">Retry</button>
                 </div>
             </div>
         </div>
@@ -198,7 +192,6 @@ const InvestmentDetail: React.FC = () => {
                                         <FileText className="text-slate-400 group-hover:text-gold-500 transition-colors" />
                                         <span className="text-white text-sm">{doc}</span>
                                     </div>
-                                    <Download size={16} className="text-slate-500 group-hover:text-white" />
                                 </div>
                             ))}
                         </div>

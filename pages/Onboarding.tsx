@@ -1,54 +1,31 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ShieldCheck, User, Briefcase, CheckCircle, ChevronRight, Loader2 } from 'lucide-react';
 import { authService } from '../services/authService';
-import { API_BASE_URL } from '../src/config';
 
 const Onboarding: React.FC = () => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
-  const token = localStorage.getItem('prestige_token');
 
   const handleNext = async () => {
     setLoading(true);
-    
-    // Step Data Submission
-    try {
-      await fetch(`${API_BASE_URL}/onboarding/step`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        },
-        body: JSON.stringify({ stepData: { stepCompleted: step } })
-      });
-    } catch (e) {
-      console.warn('Backend unavailable, simulating onboarding step save');
-    }
+    // Simulate save delay
+    await new Promise(r => setTimeout(r, 600));
     
     if (step < 3) {
       setStep(step + 1);
       setLoading(false);
     } else {
       // Completion
-      try {
-        await fetch(`${API_BASE_URL}/onboarding/complete`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-      } catch (e) {
-        console.warn('Backend unavailable, simulating onboarding completion');
-      }
-
-      // Update local user state if available
       if (user) {
         user.onboardingCompleted = true;
         authService.updateProfile(user);
       }
-      setTimeout(() => navigate('/dashboard'), 1000);
+      setTimeout(() => navigate('/dashboard'), 500);
     }
   };
 

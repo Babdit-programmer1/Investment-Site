@@ -1,48 +1,32 @@
 
 import React, { useEffect, useState } from 'react';
-import { Loader2, TrendingUp, BarChart2, Activity, PieChart, Info, WifiOff } from 'lucide-react';
-import { API_BASE_URL } from '../src/config';
+import { Loader2, Activity, Info } from 'lucide-react';
 
 const Analytics: React.FC = () => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const token = localStorage.getItem('prestige_token');
-
-  const fetchAnalytics = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_BASE_URL}/analytics/predict`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error("AI Prediction Node Unreachable");
-      setData(await res.json());
-    } catch (e: any) {
-      console.error("Analytics Error:", e);
-      setError("AI-driven analytics are temporarily unavailable. Ensure your local node is synchronized.");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
-    fetchAnalytics();
+    // Simulate AI calculation
+    setTimeout(() => {
+        setData({
+            sentiment: { score: 72 },
+            simulation: [
+                { year: 2024, value: 100 },
+                { year: 2025, value: 112 },
+                { year: 2026, value: 125 },
+                { year: 2027, value: 142 },
+                { year: 2028, value: 165 },
+            ]
+        });
+        setLoading(false);
+    }, 1200);
   }, []);
 
   if (loading) return (
     <div className="min-h-screen bg-navy-900 pt-20 flex flex-col justify-center items-center">
         <Loader2 className="w-10 h-10 text-gold-500 animate-spin mb-4" />
         <p className="text-slate-500 font-serif tracking-widest animate-pulse">RUNNING AI PROJECTIONS</p>
-    </div>
-  );
-
-  if (error) return (
-    <div className="min-h-screen bg-navy-900 pt-20 flex flex-col justify-center items-center p-4">
-        <WifiOff className="w-16 h-16 text-rose-500 mb-6 opacity-40" />
-        <h2 className="text-2xl font-serif text-white mb-2">Engine Offline</h2>
-        <p className="text-slate-400 text-center max-w-md mb-8">{error}</p>
-        <button onClick={fetchAnalytics} className="px-8 py-2 bg-gold-600 text-white rounded">Retry Processing</button>
     </div>
   );
 
@@ -79,6 +63,12 @@ const Analytics: React.FC = () => {
                 <div className="h-80 w-full relative">
                     <svg viewBox="0 0 500 300" className="w-full h-full overflow-visible">
                         <line x1="0" y1="250" x2="500" y2="250" stroke="#334155" strokeWidth="1" />
+                        <polyline
+                            points={data?.simulation.map((d: any, i: number) => `${i * 100},${250 - (d.value - 100) * 2}`).join(' ')}
+                            fill="none"
+                            stroke="#fbbf24"
+                            strokeWidth="2"
+                        />
                         {data?.simulation.map((d: any, i: number) => (
                             <text key={i} x={i * 100} y="270" fill="#94a3b8" fontSize="12" textAnchor="middle">{d.year}</text>
                         ))}

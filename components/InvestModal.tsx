@@ -4,7 +4,6 @@ import { Investment } from '../types';
 import { X, ShieldCheck, Wallet, Loader2, FileText, CheckSquare, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { API_BASE_URL } from '../src/config';
 
 interface InvestModalProps {
   investment: Investment;
@@ -24,7 +23,6 @@ const InvestModal: React.FC<InvestModalProps> = ({ investment, onClose }) => {
       terms: false
   });
 
-  const token = localStorage.getItem('prestige_token');
   const feePercentage = 0.015; // 1.5% platform fee
   const processingFee = amount * feePercentage;
   const total = amount + processingFee;
@@ -34,32 +32,13 @@ const InvestModal: React.FC<InvestModalProps> = ({ investment, onClose }) => {
     setError('');
 
     try {
-      // Crypto-Only: No gateway parameter needed, defaults to internal wallet
-      const res = await fetch(`${API_BASE_URL}/payments/initiate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          assetId: investment.id,
-          amount: amount
-        })
-      });
-
-      const data = await res.json();
-      
-      if (!res.ok) {
-          throw new Error(data.message || 'Investment failed');
-      }
-
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
       // Success
-      if (data.success) {
-         navigate('/dashboard?status=success');
-         onClose();
-      }
+      navigate('/dashboard?status=success');
+      onClose();
     } catch (err: any) {
-        setError(err.message || "An unexpected error occurred.");
+        setError("An unexpected error occurred.");
     } finally {
         setLoading(false);
     }

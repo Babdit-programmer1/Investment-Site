@@ -5,25 +5,13 @@ import { Wallet } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useGlobal } from '../context/GlobalContext';
 import { useNavigate } from 'react-router-dom';
-import { API_BASE_URL } from '../src/config';
+import { MOCK_WALLET, MOCK_LOGS } from '../src/mockData';
 
 type LogType = 'ALL' | 'DEPOSIT' | 'INVESTMENT' | 'PROFIT' | 'WITHDRAWAL';
 
-interface LedgerLog {
-  id: string;
-  actionType: string;
-  amount: number;
-  currency: string;
-  status: string;
-  referenceId: string;
-  createdAt: string;
-  source?: string;
-}
-
 const WalletPage: React.FC = () => {
-  const [wallet, setWallet] = useState<Wallet | null>(null);
+  const [wallet, setWallet] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [action, setAction] = useState<'DEPOSIT' | 'WITHDRAWAL' | null>(null);
   const [amount, setAmount] = useState<number>(0);
   const [asset, setAsset] = useState('USD');
@@ -33,73 +21,30 @@ const WalletPage: React.FC = () => {
   const [kycError, setKycError] = useState(false);
   const [withdrawalMessage, setWithdrawalMessage] = useState('');
   
-  // Config State
-  const [depositAddresses, setDepositAddresses] = useState<Record<string, string>>({});
-  
   // Ledger State
-  const [logs, setLogs] = useState<LedgerLog[]>([]);
+  const [logs, setLogs] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<LogType>('ALL');
-  const [logsLoading, setLogsLoading] = useState(false);
-
+  
   const { user } = useAuth();
   const { convertPrice, currency, t } = useGlobal();
   const navigate = useNavigate();
-  const token = localStorage.getItem('prestige_token');
-
-  const fetchDepositConfig = async () => {
-      try {
-          const res = await fetch(`${API_BASE_URL}/payments/config`, {
-              headers: { Authorization: `Bearer ${token}` }
-          });
-          if (res.ok) {
-              setDepositAddresses(await res.json());
-          }
-      } catch (e) {
-          console.error("Deposit config unavailable");
-      }
-  };
 
   const fetchWallet = async () => {
     setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_BASE_URL}/wallet`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error("Wallet Server Error");
-      setWallet(await res.json());
-    } catch (e: any) {
-      console.error("Wallet sync failure:", e);
-      setError("Unable to synchronize with the secure vault. Please check server status.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchLogs = async () => {
-    setLogsLoading(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/logs?type=${activeTab}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        setLogs(await res.json());
-      }
-    } catch (e) {
-       console.warn("Log retrieval failed");
-    } finally {
-      setLogsLoading(false);
-    }
+    setTimeout(() => {
+        setWallet(MOCK_WALLET);
+        setLogs(MOCK_LOGS);
+        setLoading(false);
+    }, 1000);
   };
 
   useEffect(() => {
     fetchWallet();
-    fetchDepositConfig();
   }, []);
 
-  useEffect(() => {
-    fetchLogs();
-  }, [activeTab]);
+  const filteredLogs = activeTab === 'ALL' 
+    ? logs 
+    : logs.filter(l => l.actionType === activeTab);
 
   const initiateAction = (type: 'DEPOSIT' | 'WITHDRAWAL') => {
       if (type === 'WITHDRAWAL' && user?.kycStatus !== 'APPROVED') {
@@ -117,57 +62,13 @@ const WalletPage: React.FC = () => {
   const handleTransaction = async () => {
     if (!action || amount <= 0) return;
     setLoading(true);
-
-    try {
-        const endpoint = action === 'DEPOSIT' ? 'deposit' : 'withdraw';
-        const payload: any = { 
-            amount, 
-            currency: asset, 
-            type: 'CRYPTO'
-        };
-
-        if (action === 'DEPOSIT') {
-            payload.chain = selectedChain;
-            payload.txHash = txHash;
-        } else {
-            payload.address = withdrawAddress;
-        }
-
-        const res = await fetch(`${API_BASE_URL}/wallet/${endpoint}`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}` 
-            },
-            body: JSON.stringify(payload)
-        });
-        
-        const data = await res.json();
-
-        if (!res.ok) {
-            setWithdrawalMessage(data.message || 'Transaction failed');
-        } else {
-            setWithdrawalMessage(data.message);
-            fetchWallet();
-            fetchLogs();
-        }
-    } catch (e) {
-        setWithdrawalMessage('Connection Error');
-    } finally {
+    setTimeout(() => {
+        setWithdrawalMessage('Transaction request submitted successfully. Waiting for blockchain confirmation.');
         setLoading(false);
-    }
+    }, 1500);
   };
 
   if (loading && !wallet) return <div className="min-h-screen bg-navy-900 pt-20 flex justify-center items-center"><Loader2 className="w-8 h-8 text-gold-500 animate-spin" /></div>;
-
-  if (error) return (
-      <div className="min-h-screen bg-navy-900 pt-20 flex flex-col justify-center items-center p-4">
-          <WifiOff className="w-16 h-16 text-rose-500 mb-6 opacity-40" />
-          <h2 className="text-2xl font-serif text-white mb-2">Vault Unreachable</h2>
-          <p className="text-slate-400 mb-8">{error}</p>
-          <button onClick={fetchWallet} className="px-8 py-2 bg-gold-600 text-white rounded">Retry Sync</button>
-      </div>
-  );
 
   return (
     <div className="min-h-screen bg-navy-900 pt-20">
@@ -227,13 +128,11 @@ const WalletPage: React.FC = () => {
                     </div>
 
                     <div className="min-h-[300px]">
-                       {logsLoading ? (
-                          <div className="flex justify-center py-12"><Loader2 className="animate-spin text-gold-500" /></div>
-                       ) : logs.length === 0 ? (
+                       {filteredLogs.length === 0 ? (
                           <div className="text-center py-12 text-slate-500 text-sm">No records found.</div>
                        ) : (
                           <div className="divide-y divide-white/5">
-                             {logs.map((log) => (
+                             {filteredLogs.map((log) => (
                                 <div key={log.id} className="p-4 hover:bg-white/5 transition-colors flex items-center justify-between">
                                    <div className="flex items-center gap-4">
                                       <div className={`w-10 h-10 rounded-full flex items-center justify-center border border-white/10 ${log.actionType === 'DEPOSIT' || log.actionType === 'PROFIT' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
@@ -297,17 +196,17 @@ const WalletPage: React.FC = () => {
                                 <div className="mb-4">
                                     <label className="block text-sm text-slate-400 mb-1">Network</label>
                                     <select value={selectedChain} onChange={(e) => setSelectedChain(e.target.value)} className="w-full bg-navy-900 border border-white/10 rounded p-2 text-white">
-                                        {Object.keys(depositAddresses).length > 0 ? Object.keys(depositAddresses).map(c => <option key={c} value={c}>{c}</option>) : <option>Loading...</option>}
+                                        <option value="ETH">Ethereum (ERC20)</option>
+                                        <option value="BTC">Bitcoin</option>
+                                        <option value="SOL">Solana</option>
                                     </select>
-                                    {depositAddresses[selectedChain] && (
-                                        <div className="mt-4 p-4 bg-navy-900 border border-white/10 rounded">
-                                            <p className="text-xs text-slate-400 mb-2">Send funds to:</p>
-                                            <div className="flex items-center justify-between bg-black/20 p-2 rounded border border-white/5">
-                                                <code className="text-xs text-gold-500 font-mono break-all">{depositAddresses[selectedChain]}</code>
-                                                <button onClick={() => navigator.clipboard.writeText(depositAddresses[selectedChain])} className="text-slate-400 hover:text-white"><Copy size={14} /></button>
-                                            </div>
+                                    <div className="mt-4 p-4 bg-navy-900 border border-white/10 rounded">
+                                        <p className="text-xs text-slate-400 mb-2">Send funds to:</p>
+                                        <div className="flex items-center justify-between bg-black/20 p-2 rounded border border-white/5">
+                                            <code className="text-xs text-gold-500 font-mono break-all">0x71C7656EC7ab88b098defB751B7401B5f6d8976F</code>
+                                            <button onClick={() => navigator.clipboard.writeText("0x71C7656EC7ab88b098defB751B7401B5f6d8976F")} className="text-slate-400 hover:text-white"><Copy size={14} /></button>
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
                             )}
 

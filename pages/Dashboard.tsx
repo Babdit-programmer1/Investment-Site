@@ -5,15 +5,14 @@ import { useGlobal } from '../context/GlobalContext';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { 
   TrendingUp, Briefcase, Wallet as WalletIcon, 
-  ArrowUpRight, ArrowDownLeft, Sparkles, 
-  FileText, CheckCircle, Lock, Copy, Activity, ShieldCheck, Loader2, WifiOff
+  Activity, ShieldCheck, Loader2, FileText
 } from 'lucide-react';
 import { InvestmentIntent, Wallet } from '../types';
-import { API_BASE_URL } from '../src/config';
+import { MOCK_PORTFOLIO, MOCK_WALLET, MOCK_LOGS } from '../src/mockData';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
-  const { convertPrice, currency: globalCurrency } = useGlobal();
+  const { convertPrice } = useGlobal();
   const [searchParams] = useSearchParams();
   
   const [activeTab, setActiveTab] = useState<'overview' | 'ledger'>('overview');
@@ -21,7 +20,6 @@ const Dashboard: React.FC = () => {
   const [wallet, setWallet] = useState<any>(null);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   if (user && !user.onboardingCompleted) {
     return <Navigate to="/onboarding" replace />;
@@ -29,28 +27,13 @@ const Dashboard: React.FC = () => {
 
   const fetchDashboardData = async () => {
     setLoading(true);
-    setError(null);
-    try {
-      const token = localStorage.getItem('prestige_token');
-      const headers = { 'Authorization': `Bearer ${token}` };
-
-      const [invRes, walletRes, logRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/payments/my`, { headers }),
-        fetch(`${API_BASE_URL}/wallet`, { headers }),
-        fetch(`${API_BASE_URL}/logs?type=ALL`, { headers })
-      ]);
-
-      if (!invRes.ok || !walletRes.ok) throw new Error("Sync failure: Secure endpoint unreachable.");
-
-      setInvestments(await invRes.json());
-      setWallet(await walletRes.json());
-      setLogs(logRes.ok ? await logRes.json() : []);
-    } catch (e: any) {
-      console.error("Dashboard connection failed:", e);
-      setError("Unable to synchronize portfolio data. Please check your local server status.");
-    } finally {
-      setLoading(false);
-    }
+    // Simulate data fetch
+    setTimeout(() => {
+        setInvestments(MOCK_PORTFOLIO);
+        setWallet(MOCK_WALLET);
+        setLogs(MOCK_LOGS);
+        setLoading(false);
+    }, 1000);
   };
 
   useEffect(() => {
@@ -61,8 +44,6 @@ const Dashboard: React.FC = () => {
     const liquid = wallet?.fiatBalance || 0;
     const invested = wallet?.investmentBalance || 0;
     const total = liquid + invested;
-    // Real-time gain calculation removed as per production requirements. 
-    // This will be populated from realized dividends in the ledger.
     const realizedYield = logs
         .filter(l => l.actionType === 'DIVIDEND' || l.actionType === 'PROFIT')
         .reduce((sum, l) => sum + Number(l.amount), 0);
@@ -82,15 +63,6 @@ const Dashboard: React.FC = () => {
     </div>
   );
 
-  if (error) return (
-    <div className="min-h-screen bg-navy-900 pt-20 flex flex-col justify-center items-center px-4">
-        <WifiOff className="w-16 h-16 text-rose-500 mb-6 opacity-40" />
-        <h2 className="text-2xl font-serif text-white mb-2">Connection Error</h2>
-        <p className="text-slate-400 text-center max-w-md mb-8">{error}</p>
-        <button onClick={fetchDashboardData} className="px-8 py-2 bg-gold-600 text-white rounded">Reconnect</button>
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-navy-900 pt-20">
       {/* Header */}
@@ -100,7 +72,7 @@ const Dashboard: React.FC = () => {
             <div>
               <h1 className="text-3xl font-serif text-white tracking-tight">Portfolio Overview</h1>
               <p className="text-slate-400 text-sm mt-1 flex items-center gap-2">
-                <Lock size={12} className="text-gold-500" /> SECURED INSTITUTIONAL ACCOUNT: {user?.fullName}
+                SECURED INSTITUTIONAL ACCOUNT: {user?.fullName}
               </p>
             </div>
             <div className="mt-4 md:mt-0 flex gap-4">

@@ -36,7 +36,6 @@ app.use(rateLimiter);
 app.get('/api/v1/health', (req, res) => {
   res.json({ 
     status: 'ok', 
-    // Fix: Accessing uptime from process with type cast to any to resolve property not found on type Process
     uptime: (process as any).uptime(),
     timestamp: new Date().toISOString()
   });

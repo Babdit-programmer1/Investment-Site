@@ -4,47 +4,25 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, Gem, LogOut, LayoutDashboard, Shield, FileText, Wallet, BarChart2, Bell, Settings as SettingsIcon, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useGlobal } from '../context/GlobalContext';
-import { API_BASE_URL } from '../src/config';
 import LanguageCurrencySelector from './LanguageCurrencySelector';
+import { MOCK_NOTIFICATIONS } from '../src/mockData';
 
 const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const token = localStorage.getItem('prestige_token');
-
-  const fetchNotifications = async () => {
-    if (!token) return;
-    try {
-        const res = await fetch(`${API_BASE_URL}/notifications`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.ok) {
-            const data = await res.json();
-            setNotifications(data);
-            setUnreadCount(data.filter((n: any) => !n.read).length);
-        }
-    } catch (e) {
-        // Silent fail
-    }
-  };
-
-  const markRead = async () => {
-      try {
-          await fetch(`${API_BASE_URL}/notifications/read`, {
-              method: 'POST',
-              headers: { Authorization: `Bearer ${token}` }
-          });
-          setUnreadCount(0);
-          fetchNotifications();
-      } catch (e) {}
-  };
 
   useEffect(() => {
-      fetchNotifications();
-      const interval = setInterval(fetchNotifications, 60000); // Poll every minute
-      return () => clearInterval(interval);
-  }, [token]);
+      // Load mock notifications
+      setNotifications(MOCK_NOTIFICATIONS);
+      setUnreadCount(MOCK_NOTIFICATIONS.filter(n => !n.read).length);
+  }, []);
+
+  const markRead = () => {
+      const updated = notifications.map(n => ({ ...n, read: true }));
+      setNotifications(updated);
+      setUnreadCount(0);
+  };
 
   return (
     <div className="relative">

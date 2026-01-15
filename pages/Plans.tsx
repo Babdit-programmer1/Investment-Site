@@ -1,57 +1,28 @@
 
 import React, { useEffect, useState } from 'react';
 import { InvestmentPlan } from '../types';
-import { Shield, TrendingUp, Zap, Check, Loader2, WifiOff } from 'lucide-react';
+import { Shield, TrendingUp, Zap, Check, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { API_BASE_URL } from '../src/config';
+import { MOCK_PLANS } from '../src/mockData';
 
 const Plans: React.FC = () => {
   const [plans, setPlans] = useState<InvestmentPlan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const fetchPlans = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const token = localStorage.getItem('prestige_token');
-      const res = await fetch(`${API_BASE_URL}/reporting/plans`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error("Strategy Server Unreachable");
-      const data = await res.json();
-      setPlans(data);
-    } catch (e: any) {
-      console.error("Plans Sync Error:", e);
-      setError(e.message || "Failed to load investment strategies.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchPlans();
+    // Simulate Fetch
+    setTimeout(() => {
+        setPlans(MOCK_PLANS);
+        setLoading(false);
+    }, 600);
   }, []);
 
   const handleSubscribe = async (planId: string) => {
-    try {
-        const token = localStorage.getItem('prestige_token');
-        const res = await fetch(`${API_BASE_URL}/reporting/plans/subscribe`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}` 
-            },
-            body: JSON.stringify({ planId })
-        });
-        if (res.ok) navigate('/dashboard');
-        else throw new Error("Subscription Failed");
-    } catch (e) { 
-        alert("Action failed: Ensure your local server is operational.");
-    }
+    // Simulate API call
+    navigate('/dashboard');
   };
 
   const getIcon = (name: string) => {
@@ -61,15 +32,6 @@ const Plans: React.FC = () => {
   };
 
   if (loading) return <div className="min-h-screen bg-navy-900 pt-20 flex justify-center items-center"><Loader2 className="w-8 h-8 text-gold-500 animate-spin" /></div>;
-
-  if (error) return (
-      <div className="min-h-screen bg-navy-900 pt-20 flex flex-col justify-center items-center">
-          <WifiOff className="w-16 h-16 text-rose-500 mb-6 opacity-40" />
-          <h2 className="text-2xl font-serif text-white mb-2">Strategies Unavailable</h2>
-          <p className="text-slate-400 mb-8">{error}</p>
-          <button onClick={fetchPlans} className="px-8 py-2 bg-gold-600 text-white rounded">Retry Connection</button>
-      </div>
-  );
 
   return (
     <div className="min-h-screen bg-navy-900 pt-20">

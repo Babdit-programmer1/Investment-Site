@@ -1,63 +1,82 @@
 
 import { UserProfile } from '../types';
-import { API_BASE_URL } from '../src/config';
 
 const SESSION_KEY = 'prestige_session';
 const TOKEN_KEY = 'prestige_token';
 
 export const authService = {
   async register(userData: any): Promise<UserProfile> {
-    const response = await fetch(`${API_BASE_URL}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(userData)
-    });
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
-    const data = await response.json();
-    if (!response.ok) {
-        throw new Error(data.message || 'Registration failed');
-    }
+    const user: UserProfile = {
+      id: 'u-' + Date.now(),
+      fullName: userData.fullName,
+      email: userData.email,
+      country: userData.country,
+      role: 'USER',
+      investorType: userData.investorType,
+      interests: userData.interests,
+      onboardingCompleted: false,
+      kycStatus: 'PENDING',
+      joinedDate: new Date().toISOString()
+    };
     
-    this.setSession(data.user, data.token);
-    return data.user;
+    this.setSession(user, 'mock-jwt-token');
+    return user;
   },
 
   async login(email: string, password: string): Promise<UserProfile> {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-      });
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      const data = await response.json();
-      if (!response.ok) {
-          throw new Error(data.message || 'Invalid email or password');
+      // Admin backdoor for testing
+      if (email === 'admin@prestige.com' && password === 'admin') {
+          const admin: UserProfile = {
+              id: 'admin-1',
+              fullName: 'System Administrator',
+              email,
+              country: 'System',
+              role: 'ADMIN',
+              investorType: 'Institutional',
+              interests: [],
+              onboardingCompleted: true,
+              kycStatus: 'APPROVED',
+              joinedDate: new Date().toISOString()
+          };
+          this.setSession(admin, 'mock-admin-token');
+          return admin;
       }
+
+      // Default mock user
+      const user: UserProfile = {
+          id: 'u-demo',
+          fullName: 'Demo Investor',
+          email,
+          country: 'United Kingdom',
+          role: 'USER',
+          investorType: 'High Net Worth',
+          interests: ['Real Estate', 'Fine Art'],
+          onboardingCompleted: true,
+          kycStatus: 'APPROVED',
+          joinedDate: new Date().toISOString(),
+          profileData: { phone: '+15550000000', emailAlerts: true, pushAlerts: true, twoFactor: false }
+      };
       
-      this.setSession(data.user, data.token);
-      return data.user;
+      this.setSession(user, 'mock-user-token');
+      return user;
   },
 
   async updateProfile(userData: Partial<UserProfile> & { phone?: string, emailAlerts?: boolean, pushAlerts?: boolean, twoFactor?: boolean }) {
-    const token = this.getToken();
-    if (!token) throw new Error("Not authenticated");
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const currentUser = this.getCurrentUser();
+    if (!currentUser) throw new Error("Not authenticated");
 
-    const response = await fetch(`${API_BASE_URL}/auth/me`, {
-      method: 'PATCH',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(userData)
-    });
-
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to update profile');
+    const updatedUser = { ...currentUser, ...userData };
+    if (userData.phone || userData.emailAlerts !== undefined) {
+        updatedUser.profileData = { ...currentUser.profileData, ...userData };
     }
-    
-    const updatedUser = await response.json();
-    this.setSession(updatedUser, token);
+
+    this.setSession(updatedUser, this.getToken() || 'mock-token');
     return updatedUser;
   },
 

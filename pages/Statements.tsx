@@ -1,83 +1,33 @@
 
 import React, { useEffect, useState } from 'react';
-import { FileText, Download, Loader2, Calendar, DollarSign, TrendingUp, TrendingDown, Clock, Shield, PieChart, Activity, WifiOff } from 'lucide-react';
+import { FileText, Download, Loader2, Calendar, DollarSign, TrendingUp, TrendingDown, Clock, Shield, PieChart, Activity } from 'lucide-react';
 import { InvestorStatement } from '../types';
-import { API_BASE_URL } from '../src/config';
+import { MOCK_STATEMENTS, MOCK_LOGS } from '../src/mockData';
 
 const Statements: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'STATEMENTS' | 'TRANSACTIONS' | 'PNL' | 'TAX'>('STATEMENTS');
   const [statements, setStatements] = useState<InvestorStatement[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
-  const [pnl, setPnL] = useState<any>(null);
-  const [tax, setTax] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const token = localStorage.getItem('prestige_token');
-
-  const fetchAllData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const headers = { 'Authorization': `Bearer ${token}` };
-      
-      const [stmtRes, txRes, pnlRes, taxRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/reporting/statements`, { headers }),
-          fetch(`${API_BASE_URL}/reporting/transactions`, { headers }),
-          fetch(`${API_BASE_URL}/reporting/pnl`, { headers }),
-          fetch(`${API_BASE_URL}/reporting/tax?year=2024`, { headers })
-      ]);
-
-      if (!stmtRes.ok || !txRes.ok) throw new Error("Synchronization Error");
-
-      setStatements(await stmtRes.json());
-      setTransactions(await txRes.json());
-      setPnL(pnlRes.ok ? await pnlRes.json() : null);
-      setTax(taxRes.ok ? await taxRes.json() : null);
-
-    } catch (e: any) {
-      console.error("Reporting sync failed:", e);
-      setError("The reporting server is currently unreachable. Please verify your local node is running.");
-    } finally {
-        setLoading(false);
-    }
-  };
 
   useEffect(() => {
-    fetchAllData();
+    // Simulate Data Fetch
+    setLoading(true);
+    setTimeout(() => {
+        setStatements(MOCK_STATEMENTS);
+        setTransactions(MOCK_LOGS);
+        setLoading(false);
+    }, 800);
   }, []);
 
-  const handleDownload = async (id: string, period: string) => {
-    try {
-        const res = await fetch(`${API_BASE_URL}/reporting/statements/${id}/download`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!res.ok) throw new Error('Download failed');
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Prestige_Statement_${period}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-    } catch(e) {
-        alert('Audit download failed. Node synchronization required.');
-    }
+  const handleDownload = (id: string, period: string) => {
+    alert(`Downloading statement for ${period} (Mock Download)`);
   };
 
   if (loading) return (
     <div className="min-h-screen bg-navy-900 pt-20 flex flex-col justify-center items-center">
         <Loader2 className="w-10 h-10 text-gold-500 animate-spin mb-4" />
         <p className="text-slate-500 font-serif tracking-widest animate-pulse">FETCHING AUDIT LEDGER</p>
-    </div>
-  );
-
-  if (error) return (
-    <div className="min-h-screen bg-navy-900 pt-20 flex flex-col justify-center items-center p-4">
-        <WifiOff className="w-16 h-16 text-rose-500 mb-6 opacity-40" />
-        <h2 className="text-2xl font-serif text-white mb-2">Reports Unavailable</h2>
-        <p className="text-slate-400 text-center max-w-md mb-8">{error}</p>
-        <button onClick={fetchAllData} className="px-8 py-2 bg-gold-600 text-white rounded">Retry Connection</button>
     </div>
   );
 
@@ -216,56 +166,33 @@ const Statements: React.FC = () => {
 
             {/* P&L TAB */}
             {activeTab === 'PNL' && (
-                pnl ? (
-                    <div className="space-y-8 animate-fade-in">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                            <div className="bg-navy-800 p-6 rounded border border-white/5">
-                                <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Total Invested</p>
-                                <p className="text-2xl font-serif text-white">${pnl.totalInvested.toLocaleString()}</p>
-                            </div>
-                            <div className="bg-navy-800 p-6 rounded border border-white/5">
-                                <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Current Value</p>
-                                <p className="text-2xl font-serif text-white">${pnl.currentValue.toLocaleString()}</p>
-                            </div>
-                            <div className="bg-navy-800 p-6 rounded border border-white/5 border-l-4 border-l-emerald-500">
-                                <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Unrealized Gains</p>
-                                <p className="text-2xl font-serif text-emerald-400">+${pnl.unrealizedGains.toLocaleString()}</p>
-                            </div>
-                            <div className="bg-navy-800 p-6 rounded border border-white/5 border-l-4 border-l-gold-500">
-                                <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Realized Gains</p>
-                                <p className="text-2xl font-serif text-gold-500">+${pnl.realizedGains.toLocaleString()}</p>
-                            </div>
+                <div className="space-y-8 animate-fade-in">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div className="bg-navy-800 p-6 rounded border border-white/5">
+                            <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Total Invested</p>
+                            <p className="text-2xl font-serif text-white">$50,000</p>
+                        </div>
+                        <div className="bg-navy-800 p-6 rounded border border-white/5">
+                            <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Current Value</p>
+                            <p className="text-2xl font-serif text-white">$51,200</p>
+                        </div>
+                        <div className="bg-navy-800 p-6 rounded border border-white/5 border-l-4 border-l-emerald-500">
+                            <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Unrealized Gains</p>
+                            <p className="text-2xl font-serif text-emerald-400">+$1,200</p>
+                        </div>
+                        <div className="bg-navy-800 p-6 rounded border border-white/5 border-l-4 border-l-gold-500">
+                            <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Realized Gains</p>
+                            <p className="text-2xl font-serif text-gold-500">$0.00</p>
                         </div>
                     </div>
-                ) : (
-                    <div className="bg-navy-800 p-20 text-center text-slate-500 italic rounded border border-white/5">
-                        Performance analysis requires active investment history.
-                    </div>
-                )
+                </div>
             )}
 
             {/* TAX TAB */}
             {activeTab === 'TAX' && (
-                tax ? (
-                    <div className="max-w-4xl animate-fade-in">
-                        <div className="bg-gradient-to-r from-navy-800 to-navy-900 border border-white/10 rounded-lg p-8 mb-8">
-                            <div className="flex justify-between items-start mb-6">
-                                <div>
-                                    <h3 className="text-2xl font-serif text-white">Tax Summary {tax.year}</h3>
-                                    <p className="text-slate-400 text-sm mt-1">Estimated liability based on realized events.</p>
-                                </div>
-                                <div className="text-right">
-                                    <span className="block text-xs text-slate-500 uppercase">Est. Liability</span>
-                                    <span className="text-3xl font-mono text-white">${tax.totalLiability.toLocaleString()}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="bg-navy-800 p-20 text-center text-slate-500 italic rounded border border-white/5">
-                        No tax events recorded for the current fiscal year.
-                    </div>
-                )
+                <div className="bg-navy-800 p-20 text-center text-slate-500 italic rounded border border-white/5">
+                    No tax events recorded for the current fiscal year.
+                </div>
             )}
 
         </div>
