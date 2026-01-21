@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Users, Briefcase, DollarSign, Activity, CheckCircle, XCircle, Plus, Wallet, X, Loader2, List, Search } from 'lucide-react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { MOCK_ADMIN_STATS, MOCK_USERS } from '../src/mockData';
+import { dataService } from '../services/dataService';
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -19,12 +19,17 @@ const AdminDashboard: React.FC = () => {
   }
 
   useEffect(() => {
-    // Simulate Fetch
-    setTimeout(() => {
-        setStats(MOCK_ADMIN_STATS);
-        setInvestors(MOCK_USERS);
-        setLoading(false);
-    }, 500);
+    setLoading(true);
+    Promise.all([
+        dataService.getAdminOverview(),
+        dataService.getAdminUsers()
+    ])
+    .then(([overview, users]) => {
+        setStats(overview);
+        setInvestors(users);
+    })
+    .catch(console.error)
+    .finally(() => setLoading(false));
   }, [activeTab]);
 
   return (

@@ -4,7 +4,7 @@ import { InvestmentPlan } from '../types';
 import { Shield, TrendingUp, Zap, Check, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { MOCK_PLANS } from '../src/mockData';
+import { dataService } from '../services/dataService';
 
 const Plans: React.FC = () => {
   const [plans, setPlans] = useState<InvestmentPlan[]>([]);
@@ -13,16 +13,20 @@ const Plans: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Simulate Fetch
-    setTimeout(() => {
-        setPlans(MOCK_PLANS);
-        setLoading(false);
-    }, 600);
+    dataService.getPlans()
+      .then(setPlans)
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
   const handleSubscribe = async (planId: string) => {
-    // Simulate API call
-    navigate('/dashboard');
+    try {
+      await dataService.subscribeToPlan(planId);
+      navigate('/dashboard');
+    } catch (e) {
+      console.error(e);
+      alert('Failed to subscribe to plan.');
+    }
   };
 
   const getIcon = (name: string) => {

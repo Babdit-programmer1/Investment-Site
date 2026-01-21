@@ -2,7 +2,9 @@
 import React, { useEffect, useState } from 'react';
 import { FileText, Download, Loader2, Calendar, DollarSign, TrendingUp, TrendingDown, Clock, Shield, PieChart, Activity } from 'lucide-react';
 import { InvestorStatement } from '../types';
-import { MOCK_STATEMENTS, MOCK_LOGS } from '../src/mockData';
+import { dataService } from '../services/dataService';
+import { API_BASE_URL } from '../src/config';
+import { getAuthToken } from '../services/apiUtils';
 
 const Statements: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'STATEMENTS' | 'TRANSACTIONS' | 'PNL' | 'TAX'>('STATEMENTS');
@@ -11,17 +13,37 @@ const Statements: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate Data Fetch
     setLoading(true);
-    setTimeout(() => {
-        setStatements(MOCK_STATEMENTS);
-        setTransactions(MOCK_LOGS);
-        setLoading(false);
-    }, 800);
+    Promise.all([
+        dataService.getStatements(),
+        dataService.getLogs('ALL')
+    ]).then(([stmts, logs]) => {
+        setStatements(stmts);
+        setTransactions(logs);
+    }).catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
   const handleDownload = (id: string, period: string) => {
-    alert(`Downloading statement for ${period} (Mock Download)`);
+    // Generate direct download link to backend
+    const token = getAuthToken();
+    const url = `${API_BASE_URL}/reporting/statements/${id}/download?token=${token}`; // Assuming backend can handle token query param or we fetch blob
+    
+    // Better approach: fetch blob to handle auth header
+    fetch(`${API_BASE_URL}/reporting/statements/${id}/download`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Statement_${period}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    })
+    .catch(err => alert('Download failed'));
   };
 
   if (loading) return (
@@ -164,7 +186,7 @@ const Statements: React.FC = () => {
                 </div>
             )}
 
-            {/* P&L TAB */}
+            {/* P&L TAB - Placeholder for future implementation */}
             {activeTab === 'PNL' && (
                 <div className="space-y-8 animate-fade-in">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -188,7 +210,7 @@ const Statements: React.FC = () => {
                 </div>
             )}
 
-            {/* TAX TAB */}
+            {/* TAX TAB - Placeholder */}
             {activeTab === 'TAX' && (
                 <div className="bg-navy-800 p-20 text-center text-slate-500 italic rounded border border-white/5">
                     No tax events recorded for the current fiscal year.

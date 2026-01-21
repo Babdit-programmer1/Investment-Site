@@ -1,88 +1,48 @@
 
 import { UserProfile } from '../types';
+import { api, setAuthToken, clearAuthToken } from './apiUtils';
 
 const SESSION_KEY = 'prestige_session';
-const TOKEN_KEY = 'prestige_token';
 
 export const authService = {
   async register(userData: any): Promise<UserProfile> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const user: UserProfile = {
-      id: 'u-' + Date.now(),
-      fullName: userData.fullName,
-      email: userData.email,
-      country: userData.country,
-      role: 'USER',
-      investorType: userData.investorType,
-      interests: userData.interests,
-      onboardingCompleted: false,
-      kycStatus: 'PENDING',
-      joinedDate: new Date().toISOString()
-    };
-    
-    this.setSession(user, 'mock-jwt-token');
-    return user;
+    const response = await api.post<{ user: UserProfile, token: string }>('/auth/register', userData);
+    if (response.token && response.user) {
+      this.setSession(response.user, response.token);
+      return response.user;
+    }
+    throw new Error('Registration failed: Invalid server response');
   },
 
   async login(email: string, password: string): Promise<UserProfile> {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Admin backdoor for testing
-      if (email === 'admin@prestige.com' && password === 'admin') {
-          const admin: UserProfile = {
-              id: 'admin-1',
-              fullName: 'System Administrator',
-              email,
-              country: 'System',
-              role: 'ADMIN',
-              investorType: 'Institutional',
-              interests: [],
-              onboardingCompleted: true,
-              kycStatus: 'APPROVED',
-              joinedDate: new Date().toISOString()
-          };
-          this.setSession(admin, 'mock-admin-token');
-          return admin;
-      }
-
-      // Default mock user
-      const user: UserProfile = {
-          id: 'u-demo',
-          fullName: 'Demo Investor',
-          email,
-          country: 'United Kingdom',
-          role: 'USER',
-          investorType: 'High Net Worth',
-          interests: ['Real Estate', 'Fine Art'],
-          onboardingCompleted: true,
-          kycStatus: 'APPROVED',
-          joinedDate: new Date().toISOString(),
-          profileData: { phone: '+15550000000', emailAlerts: true, pushAlerts: true, twoFactor: false }
-      };
-      
-      this.setSession(user, 'mock-user-token');
-      return user;
+    const response = await api.post<{ user: UserProfile, token: string }>('/auth/login', { email, password });
+    
+    if (response.token && response.user) {
+      this.setSession(response.user, response.token);
+      return response.user;
+    }
+    throw new Error('Login failed: Invalid server response');
   },
 
   async updateProfile(userData: Partial<UserProfile> & { phone?: string, emailAlerts?: boolean, pushAlerts?: boolean, twoFactor?: boolean }) {
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const response = await api.patch<UserProfile>('/auth/me', userData);
+    
+    // Update local session data with new profile if exists
     const currentUser = this.getCurrentUser();
-    if (!currentUser) throw new Error("Not authenticated");
-
-    const updatedUser = { ...currentUser, ...userData };
-    if (userData.phone || userData.emailAlerts !== undefined) {
-        updatedUser.profileData = { ...currentUser.profileData, ...userData };
+    if (currentUser) {
+        const updatedUser = { ...currentUser, ...response };
+        localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
+        return updatedUser;
     }
+    return response;
+  },
 
-    this.setSession(updatedUser, this.getToken() || 'mock-token');
-    return updatedUser;
+  async updatePassword(passwordData: any) {
+    return await api.put('/auth/password', passwordData);
   },
 
   async logout(): Promise<void> {
-    localStorage.removeItem(SESSION_KEY);
-    localStorage.removeItem(TOKEN_KEY);
+    clearAuthToken();
   },
 
   getCurrentUser(): UserProfile | null {
@@ -90,12 +50,8 @@ export const authService = {
     return session ? JSON.parse(session) : null;
   },
 
-  getToken(): string | null {
-    return localStorage.getItem(TOKEN_KEY);
-  },
-
   setSession(user: UserProfile, token: string) {
     localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-    localStorage.setItem(TOKEN_KEY, token);
+    setAuthToken(token);
   }
 };

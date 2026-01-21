@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Investment } from '../types';
 import { ArrowLeft, TrendingUp, Shield, FileText, Activity, Share2, AlertTriangle } from 'lucide-react';
 import { useGlobal } from '../context/GlobalContext';
 import InvestModal from '../components/InvestModal';
-import { MOCK_INVESTMENTS } from '../src/mockData';
+import { dataService } from '../services/dataService';
 
 const InvestmentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -19,18 +19,17 @@ const InvestmentDetail: React.FC = () => {
   const [showInvestModal, setShowInvestModal] = useState(false);
 
   useEffect(() => {
-    // Simulate API Fetch
+    if (!id) return;
     setLoading(true);
-    setTimeout(() => {
-        const found = MOCK_INVESTMENTS.find(inv => inv.id === id);
-        if (found) {
-            setAsset(found);
-            setError(null);
-        } else {
-            setError('Asset not found');
-        }
-        setLoading(false);
-    }, 500);
+    dataService.getAssetById(id)
+      .then(data => {
+        setAsset(data);
+        setError(null);
+      })
+      .catch(err => {
+        setError('Asset not found or unavailable');
+      })
+      .finally(() => setLoading(false));
   }, [id]);
 
   if (loading) {
@@ -117,7 +116,7 @@ const InvestmentDetail: React.FC = () => {
                     </div>
                     <div>
                         <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Min. Entry</p>
-                        <p className="text-2xl font-serif text-white">{convertPrice(asset.minInvestment)}</p>
+                        <p className="text-2xl font-serif text-white">{convertPrice(Number(asset.minInvestment))}</p>
                     </div>
                     <div>
                         <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Risk Profile</p>
@@ -211,7 +210,7 @@ const InvestmentDetail: React.FC = () => {
                     </div>
 
                     <button onClick={() => setShowInvestModal(true)} className="w-full bg-gold-600 hover:bg-gold-500 text-white py-3 rounded font-medium mb-3">Invest Now</button>
-                    <p className="text-center text-xs text-slate-500">Minimum investment {convertPrice(asset.minInvestment)}</p>
+                    <p className="text-center text-xs text-slate-500">Minimum investment {convertPrice(Number(asset.minInvestment))}</p>
                 </div>
             </div>
         </div>

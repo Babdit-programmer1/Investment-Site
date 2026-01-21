@@ -4,7 +4,7 @@ import { Investment } from '../types';
 import { TrendingUp, ChevronRight, Search, SlidersHorizontal, Shield, Globe, Cpu, Leaf, Music, Car, ArrowUpRight, Zap, Loader2, ArrowUpDown, AlertCircle, WifiOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGlobal } from '../context/GlobalContext';
-import { MOCK_INVESTMENTS } from '../src/mockData';
+import { dataService } from '../services/dataService';
 
 const GrowthChart: React.FC<{ scenarios: any, color?: string }> = ({ scenarios, color = "#fbbf24" }) => {
   let safeScenarios = scenarios;
@@ -64,11 +64,14 @@ const Investments: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
-    // Simulate API delay
-    setTimeout(() => {
-        setInvestments(MOCK_INVESTMENTS);
-        setLoading(false);
-    }, 1000);
+    try {
+      const data = await dataService.getMarketAssets();
+      setInvestments(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

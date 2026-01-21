@@ -8,7 +8,7 @@ import {
   Activity, ShieldCheck, Loader2, FileText
 } from 'lucide-react';
 import { InvestmentIntent, Wallet } from '../types';
-import { MOCK_PORTFOLIO, MOCK_WALLET, MOCK_LOGS } from '../src/mockData';
+import { dataService } from '../services/dataService';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -17,9 +17,10 @@ const Dashboard: React.FC = () => {
   
   const [activeTab, setActiveTab] = useState<'overview' | 'ledger'>('overview');
   const [investments, setInvestments] = useState<InvestmentIntent[]>([]);
-  const [wallet, setWallet] = useState<any>(null);
+  const [wallet, setWallet] = useState<Wallet | null>(null);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   if (user && !user.onboardingCompleted) {
     return <Navigate to="/onboarding" replace />;
@@ -27,13 +28,22 @@ const Dashboard: React.FC = () => {
 
   const fetchDashboardData = async () => {
     setLoading(true);
-    // Simulate data fetch
-    setTimeout(() => {
-        setInvestments(MOCK_PORTFOLIO);
-        setWallet(MOCK_WALLET);
-        setLogs(MOCK_LOGS);
-        setLoading(false);
-    }, 1000);
+    try {
+      const [portfolioData, walletData, logsData] = await Promise.all([
+        dataService.getMyPortfolio(),
+        dataService.getWallet(),
+        dataService.getLogs()
+      ]);
+      
+      setInvestments(portfolioData);
+      setWallet(walletData);
+      setLogs(logsData);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to load portfolio data. Please reload.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -42,8 +52,10 @@ const Dashboard: React.FC = () => {
 
   const portfolioStats = useMemo(() => {
     const liquid = wallet?.fiatBalance || 0;
-    const invested = wallet?.investmentBalance || 0;
+    const invested = investments.reduce((acc, curr) => acc + (typeof curr.amount === 'number' ? curr.amount : parseFloat(curr.amount)), 0);
     const total = liquid + invested;
+    
+    // Calculate realized yield from logs
     const realizedYield = logs
         .filter(l => l.actionType === 'DIVIDEND' || l.actionType === 'PROFIT')
         .reduce((sum, l) => sum + Number(l.amount), 0);
@@ -54,12 +66,19 @@ const Dashboard: React.FC = () => {
       { label: "Invested Capital", value: convertPrice(invested), icon: <Briefcase className="text-purple-400" />, sub: "Fractional Holdings" },
       { label: "Total Yield", value: convertPrice(realizedYield), icon: <TrendingUp className="text-emerald-400" />, sub: "Realized Gains" }
     ];
-  }, [wallet, convertPrice, logs]);
+  }, [wallet, convertPrice, logs, investments]);
 
   if (loading) return (
     <div className="min-h-screen bg-navy-900 pt-20 flex flex-col justify-center items-center">
         <Loader2 className="w-10 h-10 text-gold-500 animate-spin mb-4" />
         <p className="text-slate-500 font-serif tracking-widest animate-pulse">SYNCHRONIZING SECURE NODE</p>
+    </div>
+  );
+
+  if (error) return (
+    <div className="min-h-screen bg-navy-900 pt-20 flex flex-col justify-center items-center text-rose-500">
+      <p>{error}</p>
+      <button onClick={fetchDashboardData} className="mt-4 text-gold-500 underline">Retry</button>
     </div>
   );
 
@@ -131,7 +150,7 @@ const Dashboard: React.FC = () => {
                                 </div>
                              </div>
                              <div className="text-right">
-                                <p className="text-white font-bold">{convertPrice(inv.amount)}</p>
+                                <p className="text-white font-bold">{convertPrice(Number(inv.amount))}</p>
                              </div>
                           </div>
                         ))}
@@ -184,7 +203,7 @@ const Dashboard: React.FC = () => {
                                   }`}>{log.actionType}</span>
                                </td>
                                <td className="px-6 py-4 text-xs font-mono text-slate-500">{log.referenceId}</td>
-                               <td className="px-6 py-4 text-sm font-bold text-white">{convertPrice(log.amount)}</td>
+                               <td className="px-6 py-4 text-sm font-bold text-white">{convertPrice(Number(log.amount))}</td>
                                <td className="px-6 py-4 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">{log.status}</td>
                             </tr>
                           ))

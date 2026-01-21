@@ -4,6 +4,7 @@ import { Investment } from '../types';
 import { X, ShieldCheck, Wallet, Loader2, FileText, CheckSquare, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { dataService } from '../services/dataService';
 
 interface InvestModalProps {
   investment: Investment;
@@ -14,7 +15,7 @@ const InvestModal: React.FC<InvestModalProps> = ({ investment, onClose }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<'DETAILS' | 'LEGAL' | 'PAYMENT'>('DETAILS');
-  const [amount, setAmount] = useState<number>(investment.minInvestment);
+  const [amount, setAmount] = useState<number>(Number(investment.minInvestment));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [legalAgreed, setLegalAgreed] = useState({
@@ -32,13 +33,16 @@ const InvestModal: React.FC<InvestModalProps> = ({ investment, onClose }) => {
     setError('');
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await dataService.initiateInvestment({
+          assetId: investment.id,
+          amount: total, // Passing total including fees if that's the logic, or pass base amount + fee separatedly. Assuming simple pass for now.
+          investmentType: 'ONE_TIME'
+      });
       // Success
       navigate('/dashboard?status=success');
       onClose();
     } catch (err: any) {
-        setError("An unexpected error occurred.");
+        setError(err.message || "An unexpected error occurred.");
     } finally {
         setLoading(false);
     }
@@ -50,12 +54,12 @@ const InvestModal: React.FC<InvestModalProps> = ({ investment, onClose }) => {
           <label className="block text-sm text-slate-400 mb-1">Investment Amount (USD)</label>
           <input 
             type="number" 
-            min={investment.minInvestment}
+            min={Number(investment.minInvestment)}
             value={amount}
             onChange={(e) => setAmount(Number(e.target.value))}
             className="w-full bg-navy-900 border border-white/10 rounded p-3 text-white focus:border-gold-500 focus:outline-none"
           />
-          <p className="text-xs text-slate-500 mt-1">Min: ${investment.minInvestment.toLocaleString()}</p>
+          <p className="text-xs text-slate-500 mt-1">Min: ${Number(investment.minInvestment).toLocaleString()}</p>
         </div>
 
         <div className="bg-navy-900/50 p-4 rounded border border-white/5 space-y-2 text-sm">
@@ -75,7 +79,7 @@ const InvestModal: React.FC<InvestModalProps> = ({ investment, onClose }) => {
 
         <button 
             onClick={() => setStep('LEGAL')}
-            disabled={amount < investment.minInvestment}
+            disabled={amount < Number(investment.minInvestment)}
             className="w-full bg-gold-600 hover:bg-gold-500 text-white font-serif py-3 rounded shadow-lg transition-all disabled:opacity-50 mt-4"
         >
             Review Legal Terms
@@ -148,6 +152,8 @@ const InvestModal: React.FC<InvestModalProps> = ({ investment, onClose }) => {
              </p>
           </div>
 
+          {error && <p className="text-xs text-rose-500">{error}</p>}
+
           <button 
             onClick={handleInvest}
             disabled={loading}
@@ -185,12 +191,6 @@ const InvestModal: React.FC<InvestModalProps> = ({ investment, onClose }) => {
               <span className={`px-2 bg-navy-800 ${step === 'LEGAL' ? 'text-gold-500' : step === 'PAYMENT' ? 'text-emerald-500' : ''}`}>2. Legal</span>
               <span className={`px-2 bg-navy-800 ${step === 'PAYMENT' ? 'text-gold-500' : ''}`}>3. Payment</span>
           </div>
-
-          {error && (
-            <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm rounded flex items-center gap-2">
-              <AlertTriangle size={16} /> {error}
-            </div>
-          )}
 
           {step === 'DETAILS' && renderDetails()}
           {step === 'LEGAL' && renderLegal()}

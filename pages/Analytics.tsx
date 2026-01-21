@@ -1,26 +1,17 @@
 
 import React, { useEffect, useState } from 'react';
 import { Loader2, Activity, Info } from 'lucide-react';
+import { dataService } from '../services/dataService';
 
 const Analytics: React.FC = () => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate AI calculation
-    setTimeout(() => {
-        setData({
-            sentiment: { score: 72 },
-            simulation: [
-                { year: 2024, value: 100 },
-                { year: 2025, value: 112 },
-                { year: 2026, value: 125 },
-                { year: 2027, value: 142 },
-                { year: 2028, value: 165 },
-            ]
-        });
-        setLoading(false);
-    }, 1200);
+    dataService.getAnalyticsPrediction()
+        .then(setData)
+        .catch(console.error)
+        .finally(() => setLoading(false));
   }, []);
 
   if (loading) return (
@@ -48,11 +39,11 @@ const Analytics: React.FC = () => {
                         <div className="w-32 h-16 overflow-hidden relative">
                              <div className="w-32 h-32 rounded-full border-8 border-slate-700 absolute top-0 left-0 border-l-transparent border-b-transparent transform rotate-45"></div>
                              <div className={`w-32 h-32 rounded-full border-8 absolute top-0 left-0 border-l-transparent border-b-transparent transform transition-all duration-1000 ${
-                                 data?.sentiment.score > 50 ? 'border-emerald-500' : 'border-rose-500'
-                             }`} style={{ transform: `rotate(${45 + (data?.sentiment.score / 100) * 180}deg)` }}></div>
+                                 data?.sentiment?.score > 50 ? 'border-emerald-500' : 'border-rose-500'
+                             }`} style={{ transform: `rotate(${45 + (data?.sentiment?.score / 100) * 180}deg)` }}></div>
                         </div>
                         <div className="absolute top-10 text-center">
-                            <span className="text-2xl font-bold text-white">{data?.sentiment.score || '--'}</span>
+                            <span className="text-2xl font-bold text-white">{data?.sentiment?.score || '--'}</span>
                         </div>
                     </div>
                 </div>
@@ -63,15 +54,14 @@ const Analytics: React.FC = () => {
                 <div className="h-80 w-full relative">
                     <svg viewBox="0 0 500 300" className="w-full h-full overflow-visible">
                         <line x1="0" y1="250" x2="500" y2="250" stroke="#334155" strokeWidth="1" />
-                        <polyline
-                            points={data?.simulation.map((d: any, i: number) => `${i * 100},${250 - (d.value - 100) * 2}`).join(' ')}
-                            fill="none"
-                            stroke="#fbbf24"
-                            strokeWidth="2"
-                        />
-                        {data?.simulation.map((d: any, i: number) => (
-                            <text key={i} x={i * 100} y="270" fill="#94a3b8" fontSize="12" textAnchor="middle">{d.year}</text>
-                        ))}
+                        {data?.simulation && data.simulation.length > 0 && (
+                            <polyline
+                                points={data.simulation.map((d: any, i: number) => `${i * 100},${250 - (d.moderate - 10000)/200}`).join(' ')} // Scaling basic logic for viz
+                                fill="none"
+                                stroke="#fbbf24"
+                                strokeWidth="2"
+                            />
+                        )}
                     </svg>
                 </div>
                 <div className="mt-6 p-4 bg-navy-900/50 rounded border border-white/5 flex gap-3 items-start">

@@ -5,12 +5,12 @@ import { Wallet } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useGlobal } from '../context/GlobalContext';
 import { useNavigate } from 'react-router-dom';
-import { MOCK_WALLET, MOCK_LOGS } from '../src/mockData';
+import { dataService } from '../services/dataService';
 
 type LogType = 'ALL' | 'DEPOSIT' | 'INVESTMENT' | 'PROFIT' | 'WITHDRAWAL';
 
 const WalletPage: React.FC = () => {
-  const [wallet, setWallet] = useState<any>(null);
+  const [wallet, setWallet] = useState<Wallet | null>(null);
   const [loading, setLoading] = useState(true);
   const [action, setAction] = useState<'DEPOSIT' | 'WITHDRAWAL' | null>(null);
   const [amount, setAmount] = useState<number>(0);
@@ -20,6 +20,7 @@ const WalletPage: React.FC = () => {
   const [withdrawAddress, setWithdrawAddress] = useState('');
   const [kycError, setKycError] = useState(false);
   const [withdrawalMessage, setWithdrawalMessage] = useState('');
+  const [txnLoading, setTxnLoading] = useState(false);
   
   // Ledger State
   const [logs, setLogs] = useState<any[]>([]);
@@ -31,11 +32,18 @@ const WalletPage: React.FC = () => {
 
   const fetchWallet = async () => {
     setLoading(true);
-    setTimeout(() => {
-        setWallet(MOCK_WALLET);
-        setLogs(MOCK_LOGS);
-        setLoading(false);
-    }, 1000);
+    try {
+      const [walletData, logsData] = await Promise.all([
+        dataService.getWallet(),
+        dataService.getLogs()
+      ]);
+      setWallet(walletData);
+      setLogs(logsData);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -61,11 +69,30 @@ const WalletPage: React.FC = () => {
 
   const handleTransaction = async () => {
     if (!action || amount <= 0) return;
-    setLoading(true);
-    setTimeout(() => {
-        setWithdrawalMessage('Transaction request submitted successfully. Waiting for blockchain confirmation.');
-        setLoading(false);
-    }, 1500);
+    setTxnLoading(true);
+    try {
+        if (action === 'DEPOSIT') {
+            await dataService.depositFunds({
+                amount,
+                currency: asset,
+                txHash,
+                chain: selectedChain
+            });
+            setWithdrawalMessage('Deposit recorded. Funds will appear after blockchain confirmation and admin approval.');
+        } else {
+            await dataService.withdrawFunds({
+                amount,
+                currency: asset,
+                address: withdrawAddress
+            });
+            setWithdrawalMessage('Withdrawal request submitted for processing.');
+        }
+    } catch (e: any) {
+        setWithdrawalMessage(`Error: ${e.message}`);
+    } finally {
+        setTxnLoading(false);
+        fetchWallet(); // Refresh balances
+    }
   };
 
   if (loading && !wallet) return <div className="min-h-screen bg-navy-900 pt-20 flex justify-center items-center"><Loader2 className="w-8 h-8 text-gold-500 animate-spin" /></div>;
@@ -145,7 +172,7 @@ const WalletPage: React.FC = () => {
                                    </div>
                                    <div className="text-right">
                                       <p className={`text-sm font-bold ${log.actionType === 'DEPOSIT' || log.actionType === 'PROFIT' ? 'text-emerald-400' : 'text-white'}`}>
-                                         {log.actionType === 'DEPOSIT' || log.actionType === 'PROFIT' ? '+' : '-'}{convertPrice(log.amount)}
+                                         {log.actionType === 'DEPOSIT' || log.actionType === 'PROFIT' ? '+' : '-'}{convertPrice(Number(log.amount))}
                                       </p>
                                       <span className="text-[10px] uppercase text-slate-500">{log.status}</span>
                                    </div>
@@ -176,12 +203,12 @@ const WalletPage: React.FC = () => {
                 <div className="bg-navy-800 rounded-lg p-6 w-full max-w-md border border-white/10 shadow-2xl">
                     <h3 className="text-xl text-white font-serif mb-4">{action === 'DEPOSIT' ? 'Deposit Funds' : 'Withdraw Funds'}</h3>
                     
-                    {withdrawalMessage ? (
+                    {withdrawalMessage && !txnLoading ? (
                         <div className="text-center py-6">
                             <CheckCircle className="w-16 h-16 text-gold-500 mx-auto mb-4" />
-                            <h4 className="text-lg font-medium text-white mb-2">Request Processed</h4>
+                            <h4 className="text-lg font-medium text-white mb-2">Notice</h4>
                             <p className="text-slate-400 text-sm mb-6">{withdrawalMessage}</p>
-                            <button onClick={() => { setAction(null); setWithdrawalMessage(''); fetchWallet(); }} className="w-full bg-navy-700 hover:bg-navy-600 text-white py-2 rounded">Close</button>
+                            <button onClick={() => { setAction(null); setWithdrawalMessage(''); }} className="w-full bg-navy-700 hover:bg-navy-600 text-white py-2 rounded">Close</button>
                         </div>
                     ) : (
                         <>
@@ -229,8 +256,8 @@ const WalletPage: React.FC = () => {
 
                             <div className="flex gap-3">
                                 <button onClick={() => setAction(null)} className="flex-1 py-2 text-slate-300 hover:text-white transition-colors">Cancel</button>
-                                <button onClick={handleTransaction} disabled={!amount || (action === 'DEPOSIT' && !txHash) || (action === 'WITHDRAWAL' && !withdrawAddress)} className="flex-1 bg-gold-600 hover:bg-gold-500 text-white py-2 rounded-sm disabled:opacity-50">
-                                    {action === 'DEPOSIT' ? 'Confirm Deposit' : 'Confirm Withdrawal'}
+                                <button onClick={handleTransaction} disabled={!amount || (action === 'DEPOSIT' && !txHash) || (action === 'WITHDRAWAL' && !withdrawAddress) || txnLoading} className="flex-1 bg-gold-600 hover:bg-gold-500 text-white py-2 rounded-sm disabled:opacity-50 flex justify-center items-center">
+                                    {txnLoading ? <Loader2 className="animate-spin w-4 h-4" /> : (action === 'DEPOSIT' ? 'Confirm Deposit' : 'Confirm Withdrawal')}
                                 </button>
                             </div>
                         </>
