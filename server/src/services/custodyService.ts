@@ -37,7 +37,7 @@ export const custodyService = {
     };
   },
 
-  async requestWithdrawal(userId: string, amount: MoneyInput, currency: string) {
+  async requestWithdrawal(userId: string, amount: MoneyInput, currency: string, chain: string, address: string) {
     const withdrawAmount = Money.from(amount);
     
     // Check Main Wallet
@@ -48,8 +48,8 @@ export const custodyService = {
     if (!wallet) throw new Error('Wallet not found');
     if (Money.lt(wallet.balance, withdrawAmount)) throw new Error('Insufficient funds');
 
-    const needsApproval = Money.gt(withdrawAmount, HOT_WALLET_LIMIT);
-    const status = needsApproval ? 'PENDING_APPROVAL' : 'COMPLETED';
+    // Force Admin Approval for all withdrawals (No automation requirement)
+    const status = 'PENDING_APPROVAL';
     const ref = `WTH-${randomUUID().substring(0, 8).toUpperCase()}`;
 
     await prisma.$transaction(async (tx: any) => {
@@ -70,18 +70,17 @@ export const custodyService = {
         balanceAfter: updatedWallet.balance,
         status: status,
         metadata: { 
-          custodyTier: needsApproval ? 'WARM' : 'HOT',
-          requiresMultisig: needsApproval,
-          destination: 'External Bank' 
+          chain,
+          destinationAddress: address,
+          custodyTier: 'WARM',
+          requiresMultisig: true
         }
       });
     });
 
     return { 
       status, 
-      message: needsApproval 
-        ? 'Withdrawal exceeds hot wallet limit. Queued for admin approval.' 
-        : 'Withdrawal processed via Hot Wallet.' 
+      message: 'Withdrawal request submitted for admin approval.' 
     };
   },
 

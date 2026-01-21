@@ -29,7 +29,7 @@ export const dataService = {
     return await api.post('/wallet/deposit', data);
   },
 
-  async withdrawFunds(data: { amount: number, currency: string, address: string }) {
+  async withdrawFunds(data: { amount: number, currency: string, address: string, chain: string }) {
     return await api.post('/wallet/withdraw', data);
   },
 
@@ -72,6 +72,10 @@ export const dataService = {
     return await api.get('/admin/deposits/pending');
   },
 
+  async getAdminWithdrawals() {
+    return await api.get('/admin/withdrawals/pending');
+  },
+
   async getAdminPendingInvestments() {
     return await api.get('/admin/approvals');
   },
@@ -98,6 +102,14 @@ export const dataService = {
 
   async approveInvestment(id: string) {
     return await api.post(`/admin/approvals/${id}/approve`, {});
+  },
+
+  async approveWithdrawal(id: string) {
+    return await api.post(`/admin/withdrawals/${id}/approve`, {});
+  },
+
+  async rejectWithdrawal(id: string) {
+    return await api.post(`/admin/withdrawals/${id}/reject`, {});
   },
 
   // --- Analytics (AI) ---

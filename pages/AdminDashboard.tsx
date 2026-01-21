@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { 
   Users, Briefcase, DollarSign, Activity, CheckCircle, XCircle, 
-  Plus, Loader2, RefreshCw, AlertTriangle, Layers, Wallet
+  Plus, Loader2, RefreshCw, AlertTriangle, Layers, Wallet, ArrowUpRight
 } from 'lucide-react';
 import * as ReactRouterDOM from 'react-router-dom';
 import { dataService } from '../services/dataService';
@@ -99,7 +99,8 @@ const AdminDashboard: React.FC = () => {
             <h1 className="text-3xl font-serif text-white">Admin Dashboard</h1>
             <div className="flex gap-4">
                 <button onClick={loadData} className="text-slate-400 hover:text-white"><RefreshCw size={20} /></button>
-                <button onClick={() => navigate('/admin/wallets')} className="bg-navy-800 text-white border border-white/20 hover:bg-navy-700 px-4 py-2 rounded text-sm flex items-center gap-2"><Wallet size={16} /> Manage Wallets</button>
+                <button onClick={() => navigate('/admin/withdrawals')} className="bg-navy-800 text-white border border-white/20 hover:bg-navy-700 px-4 py-2 rounded text-sm flex items-center gap-2"><ArrowUpRight size={16} /> Withdrawals</button>
+                <button onClick={() => navigate('/admin/wallets')} className="bg-navy-800 text-white border border-white/20 hover:bg-navy-700 px-4 py-2 rounded text-sm flex items-center gap-2"><Wallet size={16} /> Platform Wallets</button>
                 <button onClick={() => navigate('/admin/plans/new')} className="bg-navy-800 text-white border border-white/20 hover:bg-navy-700 px-4 py-2 rounded text-sm flex items-center gap-2"><Layers size={16} /> Create Plan</button>
                 <button onClick={() => navigate('/admin/assets/new')} className="bg-gold-600 text-white px-4 py-2 rounded text-sm flex items-center gap-2"><Plus size={16} /> Create Asset</button>
             </div>
@@ -141,10 +142,10 @@ const AdminDashboard: React.FC = () => {
                             <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Pending Deposits</p>
                             <div className="text-2xl font-serif text-white">{stats.pendingDeposits || 0}</div>
                         </div>
-                        {/* Total Investments (Assets count) */}
+                        {/* Pending Withdrawals - New Stat */}
                         <div className="bg-navy-800 p-6 rounded border border-white/5 shadow-lg">
-                            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Total Assets</p>
-                            <div className="text-2xl font-serif text-white">{stats.totalAssets || 0}</div>
+                            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Pending Withdrawals</p>
+                            <div className="text-2xl font-serif text-rose-400">{stats.pendingWithdrawals || 0}</div>
                         </div>
                         {/* Active Investments (Portfolios) */}
                         <div className="bg-navy-800 p-6 rounded border border-white/5 shadow-lg">

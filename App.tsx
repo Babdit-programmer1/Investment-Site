@@ -30,6 +30,7 @@ const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminCreateAsset = lazy(() => import('./pages/AdminCreateAsset'));
 const AdminCreatePlan = lazy(() => import('./pages/AdminCreatePlan'));
 const AdminPlatformWallets = lazy(() => import('./pages/AdminPlatformWallets'));
+const AdminWithdrawals = lazy(() => import('./pages/AdminWithdrawals'));
 const Plans = lazy(() => import('./pages/Plans'));
 const Statements = lazy(() => import('./pages/Statements'));
 const WalletPage = lazy(() => import('./pages/Wallet'));
@@ -108,6 +109,7 @@ const App: React.FC = () => {
               <Route path="/admin/assets/new" element={<ProtectedRoute><AdminCreateAsset /></ProtectedRoute>} />
               <Route path="/admin/plans/new" element={<ProtectedRoute><AdminCreatePlan /></ProtectedRoute>} />
               <Route path="/admin/wallets" element={<ProtectedRoute><AdminPlatformWallets /></ProtectedRoute>} />
+              <Route path="/admin/withdrawals" element={<ProtectedRoute><AdminWithdrawals /></ProtectedRoute>} />
 
               {/* Catch All - 404 */}
               <Route path="*" element={<NotFound />} />

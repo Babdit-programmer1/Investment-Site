@@ -112,7 +112,7 @@ export const deposit = async (req: any, res: any) => {
 
 export const withdraw = async (req: any, res: any) => {
   const userId = req.user?.id;
-  const { amount, currency = 'USD', address } = req.body;
+  const { amount, currency = 'USD', address, chain = 'ETH' } = req.body;
   
   if (!address) return res.status(400).json({ message: 'Withdrawal address required.' });
 
@@ -126,7 +126,7 @@ export const withdraw = async (req: any, res: any) => {
     complianceService.checkTransactionLimits(user, withdrawAmount, 'WITHDRAWAL');
 
     // 2. Execute Request via Custody Service (Handles Locking)
-    const result = await custodyService.requestWithdrawal(userId, withdrawAmount, currency);
+    const result = await custodyService.requestWithdrawal(userId, withdrawAmount, currency, chain, address);
     
     res.json(result);
   } catch (error: any) {

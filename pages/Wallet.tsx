@@ -88,9 +88,10 @@ const WalletPage: React.FC = () => {
             await dataService.withdrawFunds({
                 amount,
                 currency: asset,
-                address: withdrawAddress
+                address: withdrawAddress,
+                chain: selectedChain
             });
-            setWithdrawalMessage('Withdrawal request submitted for processing.');
+            setWithdrawalMessage('Withdrawal request submitted for approval.');
         }
     } catch (e: any) {
         setWithdrawalMessage(`Error: ${e.message}`);
@@ -227,17 +228,17 @@ const WalletPage: React.FC = () => {
                                 </select>
                             </div>
 
-                            {action === 'DEPOSIT' && (
-                                <div className="mb-4">
-                                    <label className="block text-sm text-slate-400 mb-1">Network</label>
-                                    <select value={selectedChain} onChange={(e) => setSelectedChain(e.target.value)} className="w-full bg-navy-900 border border-white/10 rounded p-2 text-white">
-                                        <option value="ETH">Ethereum (ERC20)</option>
-                                        <option value="BTC">Bitcoin</option>
-                                        <option value="BSC">BNB Chain</option>
-                                        <option value="SOL">Solana</option>
-                                        <option value="TRON">Tron (TRC20)</option>
-                                        <option value="POLYGON">Polygon</option>
-                                    </select>
+                            <div className="mb-4">
+                                <label className="block text-sm text-slate-400 mb-1">Network</label>
+                                <select value={selectedChain} onChange={(e) => setSelectedChain(e.target.value)} className="w-full bg-navy-900 border border-white/10 rounded p-2 text-white">
+                                    <option value="ETH">Ethereum (ERC20)</option>
+                                    <option value="BTC">Bitcoin</option>
+                                    <option value="BSC">BNB Chain</option>
+                                    <option value="SOL">Solana</option>
+                                    <option value="TRON">Tron (TRC20)</option>
+                                    <option value="POLYGON">Polygon</option>
+                                </select>
+                                {action === 'DEPOSIT' && (
                                     <div className="mt-4 p-4 bg-navy-900 border border-white/10 rounded">
                                         <p className="text-xs text-slate-400 mb-2">Send funds to:</p>
                                         <div className="flex items-center justify-between bg-black/20 p-2 rounded border border-white/5">
@@ -245,8 +246,8 @@ const WalletPage: React.FC = () => {
                                             <button onClick={() => navigator.clipboard.writeText(currentDepositAddress)} className="text-slate-400 hover:text-white"><Copy size={14} /></button>
                                         </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
 
                             <div className="mb-4">
                                 <label className="block text-sm text-slate-400 mb-1">Amount</label>
@@ -262,13 +263,14 @@ const WalletPage: React.FC = () => {
                                 <div className="mb-6">
                                     <label className="block text-sm text-slate-400 mb-1">Destination Address</label>
                                     <input type="text" value={withdrawAddress} onChange={(e) => setWithdrawAddress(e.target.value)} className="w-full bg-navy-900 border border-white/10 rounded p-2 text-white text-xs font-mono" placeholder="Address..." />
+                                    <p className="text-xs text-slate-500 mt-1">Ensure the address matches the selected {selectedChain} network.</p>
                                 </div>
                             )}
 
                             <div className="flex gap-3">
                                 <button onClick={() => setAction(null)} className="flex-1 py-2 text-slate-300 hover:text-white transition-colors">Cancel</button>
                                 <button onClick={handleTransaction} disabled={!amount || (action === 'DEPOSIT' && !txHash) || (action === 'WITHDRAWAL' && !withdrawAddress) || txnLoading} className="flex-1 bg-gold-600 hover:bg-gold-500 text-white py-2 rounded-sm disabled:opacity-50 flex justify-center items-center">
-                                    {txnLoading ? <Loader2 className="animate-spin w-4 h-4" /> : (action === 'DEPOSIT' ? 'Confirm Deposit' : 'Confirm Withdrawal')}
+                                    {txnLoading ? <Loader2 className="animate-spin w-4 h-4" /> : (action === 'DEPOSIT' ? 'Confirm Deposit' : 'Request Withdrawal')}
                                 </button>
                             </div>
                         </>
