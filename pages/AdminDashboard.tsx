@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { 
   Users, Briefcase, DollarSign, Activity, CheckCircle, XCircle, 
-  Plus, Loader2, RefreshCw, AlertTriangle 
+  Plus, Loader2, RefreshCw, AlertTriangle, Layers, Wallet
 } from 'lucide-react';
 import * as ReactRouterDOM from 'react-router-dom';
 import { dataService } from '../services/dataService';
@@ -36,7 +36,6 @@ const AdminDashboard: React.FC = () => {
         setStats(data);
       } else if (activeTab === 'deposits') {
         try {
-            // GET /admin/deposits
             const data = await dataService.getAdminDeposits();
             setDeposits(Array.isArray(data) ? data : []);
         } catch (e) {
@@ -45,7 +44,6 @@ const AdminDashboard: React.FC = () => {
         }
       } else if (activeTab === 'investments') {
         try {
-            // GET /admin/investments
             const data = await dataService.getAdminPendingInvestments();
             setPendingInvestments(Array.isArray(data) ? data : []);
         } catch (e) {
@@ -65,8 +63,9 @@ const AdminDashboard: React.FC = () => {
     try {
         await dataService.approveDeposit(id);
         setDeposits(prev => prev.filter(d => d.id !== id));
-    } catch (e) {
-        alert('Failed to approve');
+    } catch (e: any) {
+        const msg = e.message || 'Failed to approve deposit';
+        alert(`Error: ${msg}`);
     } finally {
         setActionLoading(null);
     }
@@ -77,8 +76,9 @@ const AdminDashboard: React.FC = () => {
     try {
         await dataService.approveInvestment(id);
         setPendingInvestments(prev => prev.filter(i => i.id !== id));
-    } catch (e) {
-        alert('Failed to approve');
+    } catch (e: any) {
+        const msg = e.message || 'Failed to approve investment';
+        alert(`Error: ${msg}`);
     } finally {
         setActionLoading(null);
     }
@@ -99,6 +99,8 @@ const AdminDashboard: React.FC = () => {
             <h1 className="text-3xl font-serif text-white">Admin Dashboard</h1>
             <div className="flex gap-4">
                 <button onClick={loadData} className="text-slate-400 hover:text-white"><RefreshCw size={20} /></button>
+                <button onClick={() => navigate('/admin/wallets')} className="bg-navy-800 text-white border border-white/20 hover:bg-navy-700 px-4 py-2 rounded text-sm flex items-center gap-2"><Wallet size={16} /> Manage Wallets</button>
+                <button onClick={() => navigate('/admin/plans/new')} className="bg-navy-800 text-white border border-white/20 hover:bg-navy-700 px-4 py-2 rounded text-sm flex items-center gap-2"><Layers size={16} /> Create Plan</button>
                 <button onClick={() => navigate('/admin/assets/new')} className="bg-gold-600 text-white px-4 py-2 rounded text-sm flex items-center gap-2"><Plus size={16} /> Create Asset</button>
             </div>
         </div>
@@ -129,21 +131,25 @@ const AdminDashboard: React.FC = () => {
             <div className="animate-fade-in">
                 {activeTab === 'overview' && stats && (
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        {/* Total Deposits */}
                         <div className="bg-navy-800 p-6 rounded border border-white/5 shadow-lg">
-                            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Total AUM</p>
-                            <div className="text-2xl font-serif text-white">{convertPrice(Number(stats.totalAum || 0))}</div>
-                        </div>
-                        <div className="bg-navy-800 p-6 rounded border border-white/5 shadow-lg">
-                            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Users</p>
-                            <div className="text-2xl font-serif text-white">{stats.totalUsers}</div>
-                        </div>
-                        <div className="bg-navy-800 p-6 rounded border border-white/5 shadow-lg">
-                            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Inflow</p>
+                            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Total Deposits</p>
                             <div className="text-2xl font-serif text-emerald-400">{convertPrice(Number(stats.platformInflow || 0))}</div>
                         </div>
+                        {/* Pending Deposits */}
                         <div className="bg-navy-800 p-6 rounded border border-white/5 shadow-lg">
-                            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Outflow</p>
-                            <div className="text-2xl font-serif text-rose-400">{convertPrice(Number(stats.platformOutflow || 0))}</div>
+                            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Pending Deposits</p>
+                            <div className="text-2xl font-serif text-white">{stats.pendingDeposits || 0}</div>
+                        </div>
+                        {/* Total Investments (Assets count) */}
+                        <div className="bg-navy-800 p-6 rounded border border-white/5 shadow-lg">
+                            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Total Assets</p>
+                            <div className="text-2xl font-serif text-white">{stats.totalAssets || 0}</div>
+                        </div>
+                        {/* Active Investments (Portfolios) */}
+                        <div className="bg-navy-800 p-6 rounded border border-white/5 shadow-lg">
+                            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Active Investments</p>
+                            <div className="text-2xl font-serif text-gold-500">{stats.activeInvestments || 0}</div>
                         </div>
                     </div>
                 )}
@@ -160,8 +166,8 @@ const AdminDashboard: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
-                                {deposits.length === 0 ? (
-                                    <tr><td colSpan={4} className="p-8 text-center text-slate-500">No pending deposits found.</td></tr>
+                                {(!deposits || deposits.length === 0) ? (
+                                    <tr><td colSpan={4} className="p-8 text-center text-slate-500">No deposits yet.</td></tr>
                                 ) : deposits.map(dep => (
                                     <tr key={dep.id}>
                                         <td className="px-6 py-4">
@@ -174,9 +180,10 @@ const AdminDashboard: React.FC = () => {
                                             <button 
                                                 onClick={() => handleApproveDeposit(dep.id)}
                                                 disabled={!!actionLoading}
-                                                className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded text-xs flex items-center ml-auto"
+                                                className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded text-xs flex items-center ml-auto transition-colors disabled:opacity-50"
                                             >
-                                                {actionLoading === dep.id && <Loader2 className="w-3 h-3 animate-spin mr-1" />} Approve
+                                                {actionLoading === dep.id && <Loader2 className="w-3 h-3 animate-spin mr-1" />} 
+                                                Approve
                                             </button>
                                         </td>
                                     </tr>
@@ -198,8 +205,8 @@ const AdminDashboard: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
-                                {pendingInvestments.length === 0 ? (
-                                    <tr><td colSpan={4} className="p-8 text-center text-slate-500">No pending investments found.</td></tr>
+                                {(!pendingInvestments || pendingInvestments.length === 0) ? (
+                                    <tr><td colSpan={4} className="p-8 text-center text-slate-500">No investments yet.</td></tr>
                                 ) : pendingInvestments.map(inv => (
                                     <tr key={inv.id}>
                                         <td className="px-6 py-4">
@@ -212,9 +219,10 @@ const AdminDashboard: React.FC = () => {
                                             <button 
                                                 onClick={() => handleApproveInvestment(inv.id)}
                                                 disabled={!!actionLoading}
-                                                className="bg-gold-600 hover:bg-gold-500 text-white px-3 py-1 rounded text-xs flex items-center ml-auto"
+                                                className="bg-gold-600 hover:bg-gold-500 text-white px-3 py-1 rounded text-xs flex items-center ml-auto transition-colors disabled:opacity-50"
                                             >
-                                                {actionLoading === inv.id && <Loader2 className="w-3 h-3 animate-spin mr-1" />} Approve
+                                                {actionLoading === inv.id && <Loader2 className="w-3 h-3 animate-spin mr-1" />} 
+                                                Approve
                                             </button>
                                         </td>
                                     </tr>

@@ -7,6 +7,7 @@ import { Money } from '../utils/money';
 import { custodyService } from '../services/custodyService';
 import { riskEngine } from '../services/riskEngine';
 import { ledgerService } from '../services/ledgerService';
+import { paymentService } from '../services/paymentService';
 import { randomUUID } from 'crypto';
 
 const prisma = new PrismaClient();
@@ -582,5 +583,63 @@ export const createAsset = async (req: any, res: any) => {
     res.status(201).json(asset);
   } catch (error) {
     res.status(500).json({ message: 'Error creating asset' });
+  }
+};
+
+export const createPlan = async (req: any, res: any) => {
+    try {
+        const { name, lockupPeriod, targetRoi, minInvestment, riskLevel, allocation, description } = req.body;
+        
+        const plan = await prisma.investmentPlan.create({
+            data: {
+                name,
+                lockupPeriod,
+                targetRoi,
+                minInvestment,
+                riskLevel: riskLevel || 'Medium',
+                allocation: JSON.stringify(allocation || {}),
+                description: description || ''
+            }
+        });
+        
+        // Log action
+        await adminLogService.logAction({
+            adminId: req.user.id,
+            actionType: 'CREATE_PLAN',
+            targetId: plan.id,
+            targetType: 'PLAN',
+            ipAddress: req.ip
+        });
+
+        res.status(201).json(plan);
+    } catch (error) {
+        res.status(500).json({ message: 'Error creating plan' });
+    }
+};
+
+export const getPlatformWallets = async (req: any, res: any) => {
+  try {
+    const addresses = await paymentService.getAllAddresses();
+    // Convert to array format for admin table
+    const wallets = Object.entries(addresses).map(([chain, address]) => ({
+      chain,
+      address,
+      isActive: true // Since these are the current ones stored in SystemSetting, they are active
+    }));
+    res.json(wallets);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching platform wallets' });
+  }
+};
+
+export const addPlatformWallet = async (req: any, res: any) => {
+  const { chain, address } = req.body;
+  const adminId = req.user?.id;
+  try {
+    if (!chain || !address) return res.status(400).json({ message: 'Chain and address required' });
+    await paymentService.updateDepositAddress(chain, address, adminId, req.ip);
+    res.json({ message: 'Platform wallet updated' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating wallet' });
   }
 };

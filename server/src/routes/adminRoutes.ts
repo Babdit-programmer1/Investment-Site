@@ -8,6 +8,7 @@ import {
   verifyInvestor, 
   rejectInvestor,
   createAsset,
+  createPlan,
   getPendingInvestments,
   approveInvestment,
   refundInvestment,
@@ -26,7 +27,9 @@ import {
   rejectWithdrawal,
   creditUserWallet,
   debitUserWallet,
-  getSystemLogs
+  getSystemLogs,
+  getPlatformWallets,
+  addPlatformWallet
 } from '../controllers/adminController';
 
 const router = express.Router();
@@ -51,6 +54,11 @@ router.post('/wallets/:userId/debit', debitUserWallet);
 
 // Assets
 router.post('/assets', createAsset);
+router.post('/plans', createPlan);
+
+// Platform Wallets
+router.get('/platform-wallets', getPlatformWallets);
+router.post('/platform-wallets', addPlatformWallet);
 
 // Investment Approvals (Escrow)
 router.get('/approvals', getPendingInvestments);

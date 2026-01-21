@@ -33,6 +33,10 @@ export const dataService = {
     return await api.post('/wallet/withdraw', data);
   },
 
+  async getDepositConfig() {
+    return await api.get('/payments/config');
+  },
+
   // --- Logs & Reporting ---
   async getLogs(type: string = 'ALL') {
     return await api.get(`/logs?type=${type}`);
@@ -52,7 +56,7 @@ export const dataService = {
 
   // --- Admin ---
   async getAdminOverview() {
-    return await api.get('/admin/dashboard');
+    return await api.get('/admin/overview');
   },
 
   async getAdminUsers() {
@@ -60,15 +64,27 @@ export const dataService = {
   },
 
   async getAdminDeposits() {
-    return await api.get('/admin/deposits');
+    return await api.get('/admin/deposits/pending');
   },
 
   async getAdminPendingInvestments() {
-    return await api.get('/admin/investments');
+    return await api.get('/admin/approvals');
   },
   
   async createAsset(assetData: any) {
     return await api.post('/admin/assets', assetData);
+  },
+
+  async createPlan(planData: any) {
+    return await api.post('/admin/plans', planData);
+  },
+
+  async getPlatformWallets() {
+    return await api.get('/admin/platform-wallets');
+  },
+
+  async addPlatformWallet(data: { chain: string, address: string }) {
+    return await api.post('/admin/platform-wallets', data);
   },
 
   async approveDeposit(id: string) {
@@ -76,7 +92,7 @@ export const dataService = {
   },
 
   async approveInvestment(id: string) {
-    return await api.post(`/admin/investments/${id}/approve`, {});
+    return await api.post(`/admin/approvals/${id}/approve`, {});
   },
 
   // --- Analytics (AI) ---

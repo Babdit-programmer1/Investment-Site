@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Wallet as WalletIcon, ArrowUpRight, ArrowDownLeft, CreditCard, Bitcoin, RefreshCw, Loader2, DollarSign, FileText, CheckCircle, Clock, AlertCircle, Lock, Copy, WifiOff } from 'lucide-react';
 import { Wallet } from '../types';
@@ -22,6 +23,7 @@ const WalletPage: React.FC = () => {
   const [kycError, setKycError] = useState(false);
   const [withdrawalMessage, setWithdrawalMessage] = useState('');
   const [txnLoading, setTxnLoading] = useState(false);
+  const [depositAddresses, setDepositAddresses] = useState<Record<string, string>>({});
   
   // Ledger State
   const [logs, setLogs] = useState<any[]>([]);
@@ -34,12 +36,14 @@ const WalletPage: React.FC = () => {
   const fetchWallet = async () => {
     setLoading(true);
     try {
-      const [walletData, logsData] = await Promise.all([
+      const [walletData, logsData, configData] = await Promise.all([
         dataService.getWallet(),
-        dataService.getLogs()
+        dataService.getLogs(),
+        dataService.getDepositConfig()
       ]);
       setWallet(walletData);
       setLogs(logsData);
+      setDepositAddresses(configData);
     } catch (e) {
       console.error(e);
     } finally {
@@ -95,6 +99,9 @@ const WalletPage: React.FC = () => {
         fetchWallet(); // Refresh balances
     }
   };
+
+  // Get address for selected chain or fallback
+  const currentDepositAddress = depositAddresses[selectedChain] || '0x...';
 
   if (loading && !wallet) return <div className="min-h-screen bg-navy-900 pt-20 flex justify-center items-center"><Loader2 className="w-8 h-8 text-gold-500 animate-spin" /></div>;
 
@@ -226,13 +233,16 @@ const WalletPage: React.FC = () => {
                                     <select value={selectedChain} onChange={(e) => setSelectedChain(e.target.value)} className="w-full bg-navy-900 border border-white/10 rounded p-2 text-white">
                                         <option value="ETH">Ethereum (ERC20)</option>
                                         <option value="BTC">Bitcoin</option>
+                                        <option value="BSC">BNB Chain</option>
                                         <option value="SOL">Solana</option>
+                                        <option value="TRON">Tron (TRC20)</option>
+                                        <option value="POLYGON">Polygon</option>
                                     </select>
                                     <div className="mt-4 p-4 bg-navy-900 border border-white/10 rounded">
                                         <p className="text-xs text-slate-400 mb-2">Send funds to:</p>
                                         <div className="flex items-center justify-between bg-black/20 p-2 rounded border border-white/5">
-                                            <code className="text-xs text-gold-500 font-mono break-all">0x71C7656EC7ab88b098defB751B7401B5f6d8976F</code>
-                                            <button onClick={() => navigator.clipboard.writeText("0x71C7656EC7ab88b098defB751B7401B5f6d8976F")} className="text-slate-400 hover:text-white"><Copy size={14} /></button>
+                                            <code className="text-xs text-gold-500 font-mono break-all">{currentDepositAddress}</code>
+                                            <button onClick={() => navigator.clipboard.writeText(currentDepositAddress)} className="text-slate-400 hover:text-white"><Copy size={14} /></button>
                                         </div>
                                     </div>
                                 </div>

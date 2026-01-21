@@ -1,3 +1,4 @@
+
 import React, { Suspense, lazy } from 'react';
 import * as ReactRouterDOM from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
@@ -27,6 +28,8 @@ const Onboarding = lazy(() => import('./pages/Onboarding'));
 const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminCreateAsset = lazy(() => import('./pages/AdminCreateAsset'));
+const AdminCreatePlan = lazy(() => import('./pages/AdminCreatePlan'));
+const AdminPlatformWallets = lazy(() => import('./pages/AdminPlatformWallets'));
 const Plans = lazy(() => import('./pages/Plans'));
 const Statements = lazy(() => import('./pages/Statements'));
 const WalletPage = lazy(() => import('./pages/Wallet'));
@@ -103,6 +106,8 @@ const App: React.FC = () => {
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
               <Route path="/admin/assets/new" element={<ProtectedRoute><AdminCreateAsset /></ProtectedRoute>} />
+              <Route path="/admin/plans/new" element={<ProtectedRoute><AdminCreatePlan /></ProtectedRoute>} />
+              <Route path="/admin/wallets" element={<ProtectedRoute><AdminPlatformWallets /></ProtectedRoute>} />
 
               {/* Catch All - 404 */}
               <Route path="*" element={<NotFound />} />
