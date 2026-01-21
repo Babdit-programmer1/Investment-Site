@@ -7,6 +7,15 @@ import { dataService } from '../services/dataService';
 
 const { useNavigate } = ReactRouterDOM;
 
+const CATEGORIES = [
+    'REAL_ESTATE',
+    'RARE_ASSETS',
+    'PRIVATE_EQUITY',
+    'INFRASTRUCTURE',
+    'SPACE_TECH',
+    'COMMODITIES'
+];
+
 const AdminCreatePlan: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -15,6 +24,7 @@ const AdminCreatePlan: React.FC = () => {
   
   const [formData, setFormData] = useState({
     name: '',
+    category: 'REAL_ESTATE',
     durationMonths: '',
     monthlyRoi: '',
     minInvestment: '',
@@ -35,8 +45,8 @@ const AdminCreatePlan: React.FC = () => {
       );
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const value = e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value;
     setFormData({ ...formData, [e.target.name]: value });
   };
 
@@ -60,8 +70,9 @@ const AdminCreatePlan: React.FC = () => {
             minInvestment: Number(formData.minInvestment),
             // Mapping required backend fields not present in simple form
             riskLevel: 'Medium', 
-            allocation: {},
-            description: `Standard ${formData.durationMonths}-month plan with ${formData.monthlyRoi}% target ROI.`
+            // Storing category in allocation since we can't change DB schema easily
+            allocation: { category: formData.category },
+            description: `Standard ${formData.durationMonths}-month plan focused on ${formData.category.replace('_', ' ').toLowerCase()}.`
         });
         navigate('/admin/dashboard');
     } catch (err: any) {
@@ -94,15 +105,30 @@ const AdminCreatePlan: React.FC = () => {
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 
-                <div>
-                    <label className="block text-sm text-slate-400 mb-2">Plan Name</label>
-                    <input 
-                        name="name" 
-                        value={formData.name} 
-                        onChange={handleChange} 
-                        className="w-full bg-navy-900 border border-white/10 rounded p-3 text-white focus:border-gold-500 outline-none" 
-                        placeholder="e.g. Growth Plus Strategy" 
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className="block text-sm text-slate-400 mb-2">Plan Name</label>
+                        <input 
+                            name="name" 
+                            value={formData.name} 
+                            onChange={handleChange} 
+                            className="w-full bg-navy-900 border border-white/10 rounded p-3 text-white focus:border-gold-500 outline-none" 
+                            placeholder="e.g. Growth Plus Strategy" 
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm text-slate-400 mb-2">Category</label>
+                        <select 
+                            name="category" 
+                            value={formData.category} 
+                            onChange={handleChange} 
+                            className="w-full bg-navy-900 border border-white/10 rounded p-3 text-white focus:border-gold-500 outline-none"
+                        >
+                            {CATEGORIES.map(cat => (
+                                <option key={cat} value={cat}>{cat.replace('_', ' ')}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

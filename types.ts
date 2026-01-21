@@ -49,11 +49,12 @@ export interface Investment {
 export interface InvestmentPlan {
   id: string;
   name: string;
+  category?: string; // Added category
   riskLevel: string;
   targetRoi: string;
   minInvestment: number;
   lockupPeriod: string;
-  allocation: Record<string, number>;
+  allocation: Record<string, any>; // Changed to any to support storing category in backend JSON
   description: string;
 }
 

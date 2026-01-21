@@ -1,10 +1,61 @@
 
 import React from 'react';
-import { ArrowRight, ShieldCheck, Award, LayoutDashboard, UserPlus } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Award, LayoutDashboard, UserPlus, Globe, Database, Rocket, Hammer, Coins, Briefcase } from 'lucide-react';
 import * as ReactRouterDOM from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const { Link } = ReactRouterDOM;
+
+const ASSET_CLASSES = [
+  {
+    id: 'REAL_ESTATE',
+    name: 'Prime Real Estate',
+    description: 'Ownership in trophy properties across London, New York, and Dubai.',
+    icon: <Globe className="w-8 h-8 text-emerald-400" />,
+    gradient: 'from-emerald-950 via-navy-900 to-navy-950',
+    border: 'border-emerald-500/20 hover:border-emerald-500/50'
+  },
+  {
+    id: 'RARE_ASSETS',
+    name: 'Rare Collectibles',
+    description: 'Blue-chip art and historical artifacts with uncorrelated returns.',
+    icon: <Award className="w-8 h-8 text-purple-400" />,
+    gradient: 'from-purple-950 via-navy-900 to-navy-950',
+    border: 'border-purple-500/20 hover:border-purple-500/50'
+  },
+  {
+    id: 'PRIVATE_EQUITY',
+    name: 'Private Equity',
+    description: 'Exclusive allocation to pre-IPO ventures and growth capital.',
+    icon: <Briefcase className="w-8 h-8 text-gold-500" />,
+    gradient: 'from-amber-950 via-navy-900 to-navy-950',
+    border: 'border-gold-500/20 hover:border-gold-500/50'
+  },
+  {
+    id: 'INFRASTRUCTURE',
+    name: 'Infrastructure',
+    description: 'Yield-generating energy, data, and transport networks.',
+    icon: <Hammer className="w-8 h-8 text-blue-400" />,
+    gradient: 'from-blue-950 via-navy-900 to-navy-950',
+    border: 'border-blue-500/20 hover:border-blue-500/50'
+  },
+  {
+    id: 'SPACE_TECH',
+    name: 'Orbital Economy',
+    description: 'Frontier investments in satellite networks and launch systems.',
+    icon: <Rocket className="w-8 h-8 text-cyan-400" />,
+    gradient: 'from-cyan-950 via-navy-900 to-navy-950',
+    border: 'border-cyan-500/20 hover:border-cyan-500/50'
+  },
+  {
+    id: 'COMMODITIES',
+    name: 'Strategic Commodities',
+    description: 'Physical gold reserves and critical industrial metals.',
+    icon: <Coins className="w-8 h-8 text-yellow-400" />,
+    gradient: 'from-yellow-950 via-navy-900 to-navy-950',
+    border: 'border-yellow-500/20 hover:border-yellow-500/50'
+  }
+];
 
 const Home: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -73,7 +124,7 @@ const Home: React.FC = () => {
       </div>
 
       {/* 2. Platform Mission */}
-      <div className="py-32 relative bg-navy-950">
+      <div className="py-32 relative bg-navy-950 border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
             <div>
@@ -106,36 +157,61 @@ const Home: React.FC = () => {
 
             <div className="relative">
               <div className="absolute -inset-10 bg-gold-500/5 rounded-full blur-3xl"></div>
-              <div className="relative grid grid-cols-2 gap-4">
-                <div className="space-y-4 pt-12">
-                  <img src="https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?q=80&w=800" className="rounded-sm grayscale hover:grayscale-0 transition-all duration-700 shadow-2xl" alt="Art" />
-                  <img src="https://images.unsplash.com/photo-1600607687940-472002695530?q=80&w=800" className="rounded-sm grayscale hover:grayscale-0 transition-all duration-700 shadow-2xl" alt="Real Estate" />
-                </div>
-                <div className="space-y-4">
-                  <img src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=800" className="rounded-sm grayscale hover:grayscale-0 transition-all duration-700 shadow-2xl" alt="Luxury" />
-                  <img src="https://images.unsplash.com/photo-1517398823963-c2dc6fc3e837?q=80&w=800" className="rounded-sm grayscale hover:grayscale-0 transition-all duration-700 shadow-2xl" alt="Cars" />
-                </div>
+              <div className="relative h-full flex items-center justify-center">
+                 {/* Abstract visual instead of specific images to align with 'category' focus */}
+                 <div className="grid grid-cols-2 gap-4 w-full opacity-80">
+                    <div className="h-40 bg-gradient-to-br from-navy-800 to-navy-900 rounded-lg border border-white/5 transform translate-y-8"></div>
+                    <div className="h-40 bg-gradient-to-bl from-gold-900/20 to-navy-900 rounded-lg border border-gold-500/20"></div>
+                    <div className="h-40 bg-gradient-to-tr from-navy-800 to-navy-900 rounded-lg border border-white/5 transform -translate-y-8"></div>
+                    <div className="h-40 bg-gradient-to-tl from-navy-800 to-navy-900 rounded-lg border border-white/5"></div>
+                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 3. Featured Investments */}
+      {/* 3. Asset Categories (Replaced Featured Investments) */}
       <div className="py-32 bg-navy-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-4">
-             <div>
-                <h2 className="text-gold-500 font-mono text-xs tracking-[0.3em] uppercase mb-4">Curated Collection</h2>
-                <h3 className="font-serif text-4xl md:text-5xl text-white">Current Opportunities</h3>
-             </div>
-             <Link to="/investments" className="text-slate-400 hover:text-gold-500 transition-colors flex items-center gap-2 group text-sm tracking-widest font-bold">
-                VIEW FULL MARKETPLACE <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-             </Link>
+          <div className="text-center mb-16">
+             <h2 className="text-gold-500 font-mono text-xs tracking-[0.3em] uppercase mb-4">Investment Horizons</h2>
+             <h3 className="font-serif text-4xl md:text-5xl text-white mb-6">Strategic Asset Classes</h3>
+             <p className="text-slate-400 max-w-2xl mx-auto text-lg font-light">
+                Curated opportunities across six distinct sectors, each selected for long-term capital preservation and asymmetric growth potential.
+             </p>
           </div>
 
-          <div className="text-center py-20 bg-navy-950 rounded-sm border border-white/5">
-            <p className="text-slate-400 font-serif text-xl italic">Assets coming soon.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {ASSET_CLASSES.map((category) => (
+              <Link 
+                to="/plans" 
+                key={category.id}
+                className={`group relative p-8 rounded-lg border ${category.border} bg-gradient-to-br ${category.gradient} hover:shadow-2xl hover:shadow-black/50 transition-all duration-500 flex flex-col`}
+              >
+                <div className="absolute inset-0 bg-noise opacity-5 pointer-events-none"></div>
+                
+                <div className="mb-6 transform group-hover:-translate-y-1 transition-transform duration-500">
+                  <div className="w-14 h-14 rounded-full bg-black/20 border border-white/10 flex items-center justify-center backdrop-blur-sm mb-4 group-hover:scale-110 transition-transform">
+                    {category.icon}
+                  </div>
+                  <h4 className="text-2xl font-serif text-white mb-2">{category.name}</h4>
+                  <p className="text-slate-400 text-sm leading-relaxed group-hover:text-slate-300 transition-colors">
+                    {category.description}
+                  </p>
+                </div>
+
+                <div className="mt-auto pt-6 border-t border-white/5 flex items-center text-xs font-bold tracking-widest uppercase text-white/50 group-hover:text-white transition-colors">
+                  View Strategies <ArrowRight size={14} className="ml-2 transform group-hover:translate-x-1 transition-transform" />
+                </div>
+              </Link>
+            ))}
+          </div>
+          
+          <div className="mt-16 text-center">
+             <Link to="/investments" className="inline-flex items-center gap-2 text-gold-500 hover:text-white font-serif italic text-lg transition-colors group">
+                Browse individual assets in the Marketplace <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+             </Link>
           </div>
         </div>
       </div>

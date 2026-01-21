@@ -47,7 +47,12 @@ export const dataService = {
   },
 
   async getPlans(): Promise<InvestmentPlan[]> {
-    return await api.get('/reporting/plans');
+    const plans = await api.get<InvestmentPlan[]>('/reporting/plans');
+    return plans.map(p => ({
+        ...p,
+        // Extract category from allocation JSON if present
+        category: p.allocation?.category || 'GENERAL_WEALTH'
+    }));
   },
 
   async subscribeToPlan(planId: string) {

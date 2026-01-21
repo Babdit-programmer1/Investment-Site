@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import * as ReactRouterDOM from 'react-router-dom';
 import { Investment } from '../types';
@@ -32,6 +33,24 @@ const InvestmentDetail: React.FC = () => {
       })
       .finally(() => setLoading(false));
   }, [id]);
+
+  const getBadgeColor = (category: string = '') => {
+      // Map standard categories to colors (supports new plan categories if used for assets too)
+      const cat = category.toUpperCase().replace(' ', '_');
+      switch(cat) {
+          case 'REAL_ESTATE': return 'bg-emerald-600 text-white';
+          case 'RARE_ASSETS': return 'bg-purple-600 text-white';
+          case 'PRIVATE_EQUITY': return 'bg-gold-600 text-white';
+          case 'INFRASTRUCTURE': return 'bg-blue-600 text-white';
+          case 'SPACE_TECH': return 'bg-cyan-600 text-white';
+          case 'COMMODITIES': return 'bg-yellow-500 text-navy-900';
+          // Legacy/Other mappings
+          case 'FINE_ART': return 'bg-purple-600 text-white';
+          case 'LUXURY_VEHICLES': return 'bg-rose-600 text-white';
+          case 'AI_INFRA': return 'bg-blue-600 text-white';
+          default: return 'bg-gold-600 text-white';
+      }
+  };
 
   if (loading) {
     return <div className="min-h-screen bg-navy-900 pt-20 flex justify-center items-center text-gold-500"><Activity className="animate-spin mr-2" /> Loading Opportunity...</div>;
@@ -73,7 +92,7 @@ const InvestmentDetail: React.FC = () => {
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
                         <div className="flex items-center gap-3 mb-3">
-                            <span className="bg-gold-600 text-white text-xs font-bold px-2 py-1 rounded uppercase tracking-wider">{asset.category}</span>
+                            <span className={`${getBadgeColor(asset.category)} text-xs font-bold px-2 py-1 rounded uppercase tracking-wider`}>{asset.category}</span>
                             <span className="flex items-center text-emerald-400 text-xs font-bold bg-emerald-900/40 border border-emerald-500/30 px-2 py-1 rounded">
                                 <Activity size={12} className="mr-1" /> {asset.status}
                             </span>
