@@ -1,8 +1,9 @@
-
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import { ArrowLeft, Save, Loader2, TrendingUp, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+
+const { useNavigate } = ReactRouterDOM;
 
 const AdminCreateAsset: React.FC = () => {
   const navigate = useNavigate();

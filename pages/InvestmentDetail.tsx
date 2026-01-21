@@ -1,11 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import { Investment } from '../types';
 import { ArrowLeft, TrendingUp, Shield, FileText, Activity, Share2, AlertTriangle } from 'lucide-react';
 import { useGlobal } from '../context/GlobalContext';
 import InvestModal from '../components/InvestModal';
 import { dataService } from '../services/dataService';
+
+const { useParams, useNavigate } = ReactRouterDOM;
 
 const InvestmentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();

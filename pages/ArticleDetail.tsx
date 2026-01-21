@@ -1,7 +1,8 @@
-
 import React from 'react';
-import { useParams, Link, Navigate } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import { ArrowLeft, Calendar, User, Share2, Facebook, Twitter, Linkedin } from 'lucide-react';
+
+const { useParams, Link, Navigate } = ReactRouterDOM;
 
 // Mock Data (In a real app, fetch from API based on ID)
 const ARTICLES: Record<string, any> = {

@@ -1,8 +1,9 @@
-
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import { BlogPost, FaqItem } from '../types';
+
+const { Link } = ReactRouterDOM;
 
 const blogPosts: BlogPost[] = [
   {

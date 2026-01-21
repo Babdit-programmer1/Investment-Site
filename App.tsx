@@ -1,6 +1,5 @@
-
 import React, { Suspense, lazy } from 'react';
-import { HashRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { GlobalProvider } from './context/GlobalContext';
 import Navigation from './components/Navigation';
@@ -8,6 +7,8 @@ import Footer from './components/Footer';
 import AiAdvisor from './components/AiAdvisor';
 import ProtectedRoute from './components/ProtectedRoute';
 import { Loader2 } from 'lucide-react';
+
+const { HashRouter: Router, Routes, Route, useLocation } = ReactRouterDOM;
 
 // Lazy Load Pages for Performance Optimization
 const Home = lazy(() => import('./pages/Home'));
@@ -23,6 +24,7 @@ const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const Register = lazy(() => import('./pages/Register'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Onboarding = lazy(() => import('./pages/Onboarding'));
+const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminCreateAsset = lazy(() => import('./pages/AdminCreateAsset'));
 const Plans = lazy(() => import('./pages/Plans'));
@@ -50,12 +52,13 @@ const LoadingFallback = () => (
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
-  const isAuthPage = ['/login', '/register', '/onboarding', '/forgot-password'].includes(location.pathname);
+  const isAuthPage = ['/login', '/register', '/onboarding', '/forgot-password', '/admin/login'].includes(location.pathname);
   const isAdminPage = location.pathname.startsWith('/admin');
 
   return (
     <div className="flex flex-col min-h-screen bg-navy-900 text-slate-200">
-      <Navigation />
+      {!isAuthPage && !isAdminPage && <Navigation />}
+      {isAdminPage && !isAuthPage && <Navigation />} 
       <main className="flex-grow">
         <Suspense fallback={<LoadingFallback />}>
           {children}
@@ -97,6 +100,7 @@ const App: React.FC = () => {
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               
               {/* Admin Routes */}
+              <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
               <Route path="/admin/assets/new" element={<ProtectedRoute><AdminCreateAsset /></ProtectedRoute>} />
 

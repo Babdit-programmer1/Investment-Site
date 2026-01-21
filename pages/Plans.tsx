@@ -1,10 +1,11 @@
-
 import React, { useEffect, useState } from 'react';
 import { InvestmentPlan } from '../types';
 import { Shield, TrendingUp, Zap, Check, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import { dataService } from '../services/dataService';
+
+const { useNavigate } = ReactRouterDOM;
 
 const Plans: React.FC = () => {
   const [plans, setPlans] = useState<InvestmentPlan[]>([]);

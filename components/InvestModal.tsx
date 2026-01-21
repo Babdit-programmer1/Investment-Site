@@ -1,10 +1,11 @@
-
 import React, { useState } from 'react';
 import { Investment } from '../types';
 import { X, ShieldCheck, Wallet, Loader2, FileText, CheckSquare, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import { dataService } from '../services/dataService';
+
+const { useNavigate } = ReactRouterDOM;
 
 interface InvestModalProps {
   investment: Investment;

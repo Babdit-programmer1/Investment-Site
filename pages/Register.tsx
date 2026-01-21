@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Gem, Lock, Mail, User, Globe, Loader2, Check } from 'lucide-react';
+
+const { Link, useNavigate } = ReactRouterDOM;
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({

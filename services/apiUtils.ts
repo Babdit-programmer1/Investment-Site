@@ -29,6 +29,7 @@ async function request<T>(endpoint: string, method: string, body?: any, customHe
   const config: RequestInit = {
     method,
     headers,
+    mode: 'cors', // Explicitly set CORS mode
   };
 
   if (body) {
@@ -70,7 +71,14 @@ async function request<T>(endpoint: string, method: string, body?: any, customHe
 
     return result as T;
   } catch (error: any) {
-    console.error(`API Request Error [${method} ${endpoint}]:`, error);
+    // Log the full error to console for debugging
+    console.error(`[API Error] Request failed for ${method} ${url}:`, error);
+
+    // Handle Network Errors (when fetch fails completely)
+    if (error.name === 'TypeError' || error.message === 'Failed to fetch') {
+       throw new Error(`Unable to connect to backend server at ${baseUrl}. Please check your internet connection and ensure the server is running.`);
+    }
+    
     throw error;
   }
 }

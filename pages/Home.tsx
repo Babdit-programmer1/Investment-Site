@@ -1,23 +1,13 @@
 
-import React, { useEffect, useState } from 'react';
-import { ArrowRight, ShieldCheck, Award, Zap, LayoutDashboard, UserPlus, Loader2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import React from 'react';
+import { ArrowRight, ShieldCheck, Award, LayoutDashboard, UserPlus } from 'lucide-react';
+import * as ReactRouterDOM from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Investment } from '../types';
-import { MOCK_INVESTMENTS } from '../src/mockData';
+
+const { Link } = ReactRouterDOM;
 
 const Home: React.FC = () => {
   const { isAuthenticated } = useAuth();
-  const [featuredAssets, setFeaturedAssets] = useState<Investment[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Simulate network delay
-    setTimeout(() => {
-        setFeaturedAssets(MOCK_INVESTMENTS.slice(0, 3));
-        setLoading(false);
-    }, 800);
-  }, []);
 
   return (
     <div className="bg-navy-900 overflow-x-hidden">
@@ -144,46 +134,9 @@ const Home: React.FC = () => {
              </Link>
           </div>
 
-          {loading ? (
-            <div className="flex justify-center py-20"><Loader2 className="animate-spin text-gold-500 w-10 h-10" /></div>
-          ) : featuredAssets.length === 0 ? (
-            <div className="text-center py-20 bg-navy-950 rounded-sm border border-white/5">
-                <p className="text-slate-500 font-serif italic">The marketplace is currently being refreshed. Check back shortly.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-              {featuredAssets.map((asset) => (
-                <Link key={asset.id} to={`/investments/${asset.id}`} className="group block bg-navy-950 border border-white/5 hover:border-gold-500/30 transition-all duration-500 rounded-sm overflow-hidden shadow-2xl">
-                   <div className="relative h-72 overflow-hidden">
-                      <img src={asset.imageUrl} alt={asset.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-navy-950 via-transparent to-transparent"></div>
-                      <div className="absolute top-6 left-6 py-1 px-3 bg-navy-900/90 backdrop-blur border border-white/10 rounded-sm text-[10px] font-bold text-gold-500 uppercase tracking-widest">
-                         {asset.category}
-                      </div>
-                      <div className="absolute bottom-6 left-6">
-                         <div className="flex items-center gap-2 text-emerald-400 font-mono text-xl font-bold">
-                            <Zap size={18} fill="currentColor" /> {asset.returnRate} <span className="text-xs text-slate-500 font-light">/ {asset.term}</span>
-                         </div>
-                      </div>
-                   </div>
-                   <div className="p-8">
-                      <h4 className="text-2xl font-serif text-white mb-6 group-hover:text-gold-500 transition-colors">{asset.title}</h4>
-                      <div className="flex justify-between items-center py-4 border-t border-white/5">
-                         <div>
-                            <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">Minimum Entry</p>
-                            <p className="text-white font-mono font-bold">${Number(asset.minInvestment).toLocaleString()}</p>
-                         </div>
-                         <div className="text-right">
-                            <button className="text-gold-500 group-hover:text-white transition-colors">
-                               <ArrowRight />
-                            </button>
-                         </div>
-                      </div>
-                   </div>
-                </Link>
-              ))}
-            </div>
-          )}
+          <div className="text-center py-20 bg-navy-950 rounded-sm border border-white/5">
+            <p className="text-slate-400 font-serif text-xl italic">Assets coming soon.</p>
+          </div>
         </div>
       </div>
     </div>

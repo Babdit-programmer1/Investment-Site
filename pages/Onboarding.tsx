@@ -1,9 +1,10 @@
-
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ShieldCheck, User, Briefcase, CheckCircle, ChevronRight, Loader2 } from 'lucide-react';
 import { authService } from '../services/authService';
+
+const { useNavigate } = ReactRouterDOM;
 
 const Onboarding: React.FC = () => {
   const [step, setStep] = useState(1);

@@ -1,11 +1,12 @@
-
 import React, { useEffect, useState } from 'react';
 import { Wallet as WalletIcon, ArrowUpRight, ArrowDownLeft, CreditCard, Bitcoin, RefreshCw, Loader2, DollarSign, FileText, CheckCircle, Clock, AlertCircle, Lock, Copy, WifiOff } from 'lucide-react';
 import { Wallet } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useGlobal } from '../context/GlobalContext';
-import { useNavigate } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import { dataService } from '../services/dataService';
+
+const { useNavigate } = ReactRouterDOM;
 
 type LogType = 'ALL' | 'DEPOSIT' | 'INVESTMENT' | 'PROFIT' | 'WITHDRAWAL';
 

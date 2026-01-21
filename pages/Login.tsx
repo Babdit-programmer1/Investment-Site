@@ -1,8 +1,9 @@
-
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Gem, Lock, Mail, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+
+const { Link, useNavigate, useLocation } = ReactRouterDOM;
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');

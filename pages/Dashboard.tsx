@@ -1,14 +1,15 @@
-
 import React, { useMemo, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useGlobal } from '../context/GlobalContext';
-import { Link, Navigate, useSearchParams } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import { 
   TrendingUp, Briefcase, Wallet as WalletIcon, 
   Activity, ShieldCheck, Loader2, FileText
 } from 'lucide-react';
 import { InvestmentIntent, Wallet } from '../types';
 import { dataService } from '../services/dataService';
+
+const { Link, Navigate, useSearchParams } = ReactRouterDOM;
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();

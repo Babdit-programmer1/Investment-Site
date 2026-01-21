@@ -52,15 +52,31 @@ export const dataService = {
 
   // --- Admin ---
   async getAdminOverview() {
-    return await api.get('/admin/overview');
+    return await api.get('/admin/dashboard');
   },
 
   async getAdminUsers() {
     return await api.get('/admin/users');
   },
+
+  async getAdminDeposits() {
+    return await api.get('/admin/deposits');
+  },
+
+  async getAdminPendingInvestments() {
+    return await api.get('/admin/investments');
+  },
   
   async createAsset(assetData: any) {
     return await api.post('/admin/assets', assetData);
+  },
+
+  async approveDeposit(id: string) {
+    return await api.post(`/admin/deposits/${id}/approve`, {});
+  },
+
+  async approveInvestment(id: string) {
+    return await api.post(`/admin/investments/${id}/approve`, {});
   },
 
   // --- Analytics (AI) ---

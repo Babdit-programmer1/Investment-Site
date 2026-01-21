@@ -1,7 +1,9 @@
 import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Loader2 } from 'lucide-react';
+
+const { Navigate, useLocation } = ReactRouterDOM;
 
 interface ProtectedRouteProps {
   children: React.ReactElement;

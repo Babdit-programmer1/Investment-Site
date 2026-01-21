@@ -1,14 +1,16 @@
-
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
+import { useNavigate } from 'react-router-dom'; // Using destructured version from namespace below
 import { ShieldCheck, Upload, User, MapPin, Camera, CheckCircle, AlertCircle, Loader2, Briefcase } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+
+const { useNavigate: _useNavigate } = ReactRouterDOM;
 
 const KycVerification: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<any>({ status: 'PENDING_SUBMISSION', currentStep: 1 });
-  const navigate = useNavigate();
+  const navigate = _useNavigate();
   const { user } = useAuth();
 
   const handleStepSubmit = async (data: any) => {

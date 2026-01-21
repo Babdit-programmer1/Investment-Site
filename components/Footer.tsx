@@ -1,7 +1,8 @@
-
 import React from 'react';
-import { Link } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import { Gem, Twitter, Linkedin, Instagram, Mail, Phone } from 'lucide-react';
+
+const { Link } = ReactRouterDOM;
 
 const Footer: React.FC = () => {
   return (

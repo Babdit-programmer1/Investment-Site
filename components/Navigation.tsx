@@ -1,11 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import { Menu, X, Gem, LogOut, LayoutDashboard, Shield, FileText, Wallet, BarChart2, Bell, Settings as SettingsIcon, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useGlobal } from '../context/GlobalContext';
 import LanguageCurrencySelector from './LanguageCurrencySelector';
 import { MOCK_NOTIFICATIONS } from '../src/mockData';
+
+const { Link, useLocation, useNavigate } = ReactRouterDOM;
 
 const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);

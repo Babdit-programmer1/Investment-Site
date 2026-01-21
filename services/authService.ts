@@ -43,6 +43,7 @@ export const authService = {
 
   async logout(): Promise<void> {
     clearAuthToken();
+    localStorage.removeItem(SESSION_KEY);
   },
 
   getCurrentUser(): UserProfile | null {

@@ -1,8 +1,9 @@
-
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import { Gem, Mail, ArrowRight, Loader2, CheckCircle, ArrowLeft } from 'lucide-react';
 import { API_BASE_URL } from '../src/config';
+
+const { Link } = ReactRouterDOM;
 
 const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState('');

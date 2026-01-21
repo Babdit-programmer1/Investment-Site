@@ -1,7 +1,8 @@
-
 import React from 'react';
-import { Link } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import { Compass, Home, ArrowLeft } from 'lucide-react';
+
+const { Link } = ReactRouterDOM;
 
 const NotFound: React.FC = () => {
   return (
