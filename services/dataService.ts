@@ -69,7 +69,7 @@ export const dataService = {
   },
 
   async getAdminDeposits() {
-    return await api.get('/admin/deposits/pending');
+    return await api.get('/admin/deposits');
   },
 
   async getAdminWithdrawals() {
@@ -77,7 +77,7 @@ export const dataService = {
   },
 
   async getAdminPendingInvestments() {
-    return await api.get('/admin/approvals');
+    return await api.get('/admin/investments');
   },
   
   async createAsset(assetData: any) {

@@ -1,11 +1,12 @@
 
 import React from 'react';
-import { ArrowRight, ShieldCheck, Award, LayoutDashboard, UserPlus, Globe, Database, Rocket, Hammer, Coins, Briefcase } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Award, LayoutDashboard, UserPlus, Globe, Rocket, Hammer, Coins, Briefcase } from 'lucide-react';
 import * as ReactRouterDOM from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const { Link } = ReactRouterDOM;
 
+// Static Categories (No fetching required)
 const ASSET_CLASSES = [
   {
     id: 'REAL_ESTATE',
@@ -158,7 +159,6 @@ const Home: React.FC = () => {
             <div className="relative">
               <div className="absolute -inset-10 bg-gold-500/5 rounded-full blur-3xl"></div>
               <div className="relative h-full flex items-center justify-center">
-                 {/* Abstract visual instead of specific images to align with 'category' focus */}
                  <div className="grid grid-cols-2 gap-4 w-full opacity-80">
                     <div className="h-40 bg-gradient-to-br from-navy-800 to-navy-900 rounded-lg border border-white/5 transform translate-y-8"></div>
                     <div className="h-40 bg-gradient-to-bl from-gold-900/20 to-navy-900 rounded-lg border border-gold-500/20"></div>
@@ -171,7 +171,7 @@ const Home: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Asset Categories (Replaced Featured Investments) */}
+      {/* 3. Asset Categories */}
       <div className="py-32 bg-navy-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -207,12 +207,20 @@ const Home: React.FC = () => {
               </Link>
             ))}
           </div>
-          
-          <div className="mt-16 text-center">
-             <Link to="/investments" className="inline-flex items-center gap-2 text-gold-500 hover:text-white font-serif italic text-lg transition-colors group">
-                Browse individual assets in the Marketplace <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-             </Link>
-          </div>
+        </div>
+      </div>
+
+      {/* 4. Featured Assets (Placeholder / No-Fetch Mode) */}
+      <div className="py-20 bg-navy-950 border-t border-white/5">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+            <h3 className="font-serif text-3xl text-white mb-4">Featured Opportunities</h3>
+            <p className="text-slate-500 italic text-lg">Assets coming soon.</p>
+            
+            <div className="mt-8">
+                <Link to="/investments" className="inline-flex items-center gap-2 text-gold-500 hover:text-white font-serif italic text-lg transition-colors group">
+                    View Marketplace <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                </Link>
+            </div>
         </div>
       </div>
     </div>

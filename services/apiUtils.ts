@@ -46,6 +46,7 @@ async function request<T>(endpoint: string, method: string, body?: any, customHe
 
     // Handle 401 Unauthorized globally
     if (response.status === 401) {
+      console.error(`[API Auth] 401 Unauthorized at ${url}`);
       clearAuthToken();
       // Redirect to login if not already there (assuming HashRouter based on app structure)
       if (!window.location.hash.includes('/login')) {
@@ -63,6 +64,7 @@ async function request<T>(endpoint: string, method: string, body?: any, customHe
     }
 
     if (!response.ok) {
+      console.error(`[API Error] ${response.status} at ${url}:`, result);
       const errorMessage = typeof result === 'object' && result.message 
         ? result.message 
         : (typeof result === 'string' && result.length < 200 ? result : `API Request Failed: ${response.statusText}`);
@@ -72,7 +74,7 @@ async function request<T>(endpoint: string, method: string, body?: any, customHe
     return result as T;
   } catch (error: any) {
     // Log the full error to console for debugging
-    console.error(`[API Error] Request failed for ${method} ${url}:`, error);
+    console.error(`[API Exception] Request failed for ${method} ${url}:`, error);
 
     // Handle Network Errors (when fetch fails completely)
     if (error.name === 'TypeError' || error.message === 'Failed to fetch') {
